@@ -34,6 +34,7 @@ from mongoadmin import mongohelpers
 from mongodbforms.documents import (documentform_factory, DocumentForm, 
                                   inlineformset_factory, BaseInlineDocumentFormSet)
 from mongodbforms.util import MongoFormFieldGenerator, init_document_options
+from mongodbforms.documents import save_instance
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -696,7 +697,8 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         Given a model instance save it to the database.
         """
-        obj.save()
+        save_instance(form, obj)
+        #obj.save()
 
     def delete_model(self, request, obj):
         """

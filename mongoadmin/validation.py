@@ -1,17 +1,24 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.db.models.fields import FieldDoesNotExist
-from django.forms.models import (BaseModelForm, BaseModelFormSet, fields_for_model,
-    _get_foreign_key)
+from django.forms.models import BaseModelForm, BaseModelFormSet, _get_foreign_key
 from django.contrib.admin.util import get_fields_from_path, NotRelationField
 from django.contrib.admin.options import (flatten_fieldsets, BaseModelAdmin,
     HORIZONTAL, VERTICAL)
+from django.contrib.admin.validation import validate as django_validate
 
-from mongodbforms.documents import DocumentFormMetaclass
+from mongodbforms.documents import DocumentFormMetaclass, fields_for_document
+from mongodbforms.documentoptions import AdminOptions
 
 __all__ = ['validate']
 
 def validate(cls, model):
+    if issubclass(model, models.Model):
+        django_validate(cls, model)
+    else:
+        _validate(cls, model)
+
+def _validate(cls, model):
     """
     Does basic ModelAdmin option validation. Calls custom validation
     classmethod in the end if it is provided in cls. The signature of the
@@ -20,7 +27,7 @@ def validate(cls, model):
     # Before we can introspect models, they need to be fully loaded so that
     # inter-relations are set up correctly. We force that here.
     models.get_apps()
-
+    
     opts = model._meta
     validate_base(cls, model)
 
@@ -196,6 +203,8 @@ def validate_inline(cls, parent, parent_model):
 
 def validate_base(cls, model):
     opts = model._meta
+    if isinstance(opts, dict):
+        opts = AdminOptions(model)
 
     # raw_id_fields
     if hasattr(cls, 'raw_id_fields'):
@@ -364,7 +373,7 @@ def check_formfield(cls, model, opts, label, field):
             raise ImproperlyConfigured("'%s.%s' refers to field '%s' that "
                 "is missing from the form." % (cls.__name__, label, field))
     else:
-        fields = fields_for_model(model)
+        fields = fields_for_document(model)
         try:
             fields[field]
         except KeyError:
