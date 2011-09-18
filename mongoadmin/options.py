@@ -36,8 +36,6 @@ from mongodbforms.documents import (documentform_factory, DocumentForm,
 from mongodbforms.util import MongoFormFieldGenerator, init_document_options
 from mongodbforms.documents import save_instance
 
-import app_settings
-
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
 get_ul_class = lambda x: 'radiolist%s' % ((x == HORIZONTAL) and ' inline' or '')
