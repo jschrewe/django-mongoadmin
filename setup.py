@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='mongoadmin',
-    version='0.1a',
+    version='0.1b',
     description="A replacement for django's admin that works with mongodb.",
     author='Jan Schrewe',
     author_email='jan@schafproductions.com',

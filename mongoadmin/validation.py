@@ -10,6 +10,8 @@ from django.contrib.admin.validation import validate as django_validate
 from mongodbforms.documents import DocumentFormMetaclass, fields_for_document
 from mongodbforms.documentoptions import AdminOptions
 
+from mongoengine.fields import ListField, EmbeddedDocumentField
+
 __all__ = ['validate']
 
 def validate(cls, model):
@@ -377,14 +379,13 @@ def check_formfield(cls, model, opts, label, field):
         try:
             fields[field]
         except KeyError:
+            if hasattr(model, field) and isinstance(getattr(model, field), ListField):
+                if isinstance(model._fields[field].field, EmbeddedDocumentField):
+                    return
             raise ImproperlyConfigured("'%s.%s' refers to field '%s' that "
                 "is missing from the form." % (cls.__name__, label, field))
 
 def fetch_attr(cls, model, opts, label, field):
-    try:
-        return opts.get_field(field)
-    except models.FieldDoesNotExist:
-        pass
     try:
         return getattr(model, field)
     except AttributeError:

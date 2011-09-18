@@ -3,6 +3,9 @@ import new
 from django.utils.encoding import force_unicode, smart_unicode, smart_str
 from django.forms.forms import pretty_name
 from django.db.models.fields import FieldDoesNotExist
+from django.utils import formats
+
+from mongoengine import fields
 
 from mongodbforms.documentoptions import AdminOptions
 
@@ -50,3 +53,24 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
         return (label, attr)
     else:
         return label
+
+def display_for_field(value, field):
+    from django.contrib.admin.templatetags.admin_list import _boolean_icon
+    from django.contrib.admin.views.main import EMPTY_CHANGELIST_VALUE   
+
+    if field.flatchoices:
+        return dict(field.flatchoices).get(value, EMPTY_CHANGELIST_VALUE)
+    # NullBooleanField needs special-case null-handling, so it comes
+    # before the general null test.
+    elif isinstance(field, fields.BooleanField):
+        return _boolean_icon(value)
+    elif value is None:
+        return EMPTY_CHANGELIST_VALUE
+    elif isinstance(field, fields.DateTimeField):
+        return formats.localize(value)
+    elif isinstance(field, fields.DecimalField):
+        return formats.number_format(value, field.decimal_places)
+    elif isinstance(field, fields.FloatField):
+        return formats.number_format(value)
+    else:
+        return smart_unicode(value)

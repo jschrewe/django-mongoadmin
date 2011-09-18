@@ -51,3 +51,7 @@ Changelists only support basic listings you probably won't be able to use fieldl
 
 Inline admin objects are created automatically for embedded objects, but can't be defined manually for referenced objects. Although I haven't tested it, field widget can't be overwritten.
 
+## TODO
+
+ * highlight required fields
+

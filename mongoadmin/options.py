@@ -36,6 +36,8 @@ from mongodbforms.documents import (documentform_factory, DocumentForm,
 from mongodbforms.util import MongoFormFieldGenerator, init_document_options
 from mongodbforms.documents import save_instance
 
+import app_settings
+
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
 get_ul_class = lambda x: 'radiolist%s' % ((x == HORIZONTAL) and ' inline' or '')
@@ -161,7 +163,7 @@ class BaseDocumentAdmin(object):
                     include_blank = db_field.blank,
                     blank_choice=[('', _('None'))]
                 )
-        return db_field.formfield(**kwargs)
+        return formfield(db_field, **kwargs)
 
     def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
         """
@@ -327,7 +329,7 @@ class DocumentAdmin(BaseDocumentAdmin):
 
     def get_inline_instances(self):
         for f in self.document._fields.itervalues():
-            if isinstance(f, ListField):
+            if isinstance(f, ListField) and isinstance(f.field, EmbeddedDocumentField) and f.name not in self.exclude:
                 document = self.document()
                 inline_instance = EmbeddedStackedDocument(f, document, self.admin_site)
                 self.inline_instances.append(inline_instance)
@@ -1029,7 +1031,6 @@ class DocumentAdmin(BaseDocumentAdmin):
                 formset = FormSet(request.POST, request.FILES,
                                   instance=new_object, prefix=prefix,
                                   queryset=inline.queryset(request))
-                
 
                 if formset.is_valid() and form_validated:
                     if isinstance(inline, EmbeddedDocumentAdmin):
@@ -1422,8 +1423,8 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
         super(EmbeddedDocumentAdmin, self).__init__(parent_document, admin_site)
         
     def queryset(self, request):
-        self.doc_list = self.parent_document.comments
-        return self.parent_document.comments
+        self.doc_list = getattr(self.parent_document, self.rel_name)
+        return self.doc_list
 
 class StackedDocumentInline(InlineDocumentAdmin):
     template = 'admin/edit_inline/stacked.html'

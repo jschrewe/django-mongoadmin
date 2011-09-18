@@ -1,6 +1,8 @@
 from django.contrib.admin.helpers import InlineAdminForm as DjangoInlineAdminForm
 from django.contrib.admin.helpers import InlineAdminFormSet as DjangoInlineAdminFormSet
-from django.contrib.admin.helpers import AdminForm
+from django.contrib.admin.helpers import AdminForm, AdminField
+
+from mongoengine.document import EmbeddedDocument
 
 class InlineAdminFormSet(DjangoInlineAdminFormSet):
     """
@@ -35,5 +37,12 @@ class InlineAdminForm(DjangoInlineAdminForm):
         self.show_url = original and hasattr(original, 'get_absolute_url')
         AdminForm.__init__(self, form, fieldsets, prepopulated_fields,
             readonly_fields, model_admin)
+        
+    def pk_field(self):
+        # if there is no pk field then it's an embedded form so return none 
+        if hasattr(self.formset, "_pk_field"):
+            return super(InlineAdminForm, self).pk_field()
+        else:
+            return None
 
 
