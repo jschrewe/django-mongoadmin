@@ -312,6 +312,9 @@ class DocumentAdmin(BaseDocumentAdmin):
         self.inline_instances = []
         
         for inline_class in self.inlines:
+            # all embedded admins are handled by self.get_inline_instances()
+            if issubclass(inline_class, EmbeddedDocumentAdmin):
+                continue
             inline_instance = inline_class(self.model, self.admin_site)
             self.inline_instances.append(inline_instance)
         
@@ -332,7 +335,14 @@ class DocumentAdmin(BaseDocumentAdmin):
                 continue
             if isinstance(f.field, EmbeddedDocumentField) and f.name not in self.exclude:
                 document = self.document()
-                inline_instance = EmbeddedStackedDocument(f, document, self.admin_site)
+                embedded_document = f.field.document_type
+                inline_admin = EmbeddedStackedDocument
+                # check if there is an admin for the embedded document in
+                # self.inlines. If there is, use this, else use default.
+                for inline_class in self.inlines:
+                    if inline_class.document == embedded_document:
+                        inline_admin = inline_class
+                inline_instance = inline_admin(f, document, self.admin_site)
                 self.inline_instances.append(inline_instance)
 
     def get_urls(self):

@@ -1,16 +1,18 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.db.models.fields import FieldDoesNotExist
-from django.forms.models import BaseModelForm, BaseModelFormSet, _get_foreign_key
+from django.forms.models import BaseModelForm, _get_foreign_key
 from django.contrib.admin.util import get_fields_from_path, NotRelationField
-from django.contrib.admin.options import (flatten_fieldsets, BaseModelAdmin,
-    HORIZONTAL, VERTICAL)
+from django.contrib.admin.options import flatten_fieldsets, HORIZONTAL, VERTICAL
 from django.contrib.admin.validation import validate as django_validate
 
-from mongodbforms.documents import DocumentFormMetaclass, fields_for_document
+from mongodbforms.documents import DocumentFormMetaclass, fields_for_document, BaseDocumentFormSet
 from mongodbforms.documentoptions import AdminOptions
 
 from mongoengine.fields import ListField, EmbeddedDocumentField
+from mongoengine.base import BaseDocument
+
+from options import BaseDocumentAdmin, EmbeddedDocumentAdmin
 
 __all__ = ['validate']
 
@@ -154,16 +156,16 @@ def _validate(cls, model):
     if hasattr(cls, 'inlines'):
         check_isseq(cls, 'inlines', cls.inlines)
         for idx, inline in enumerate(cls.inlines):
-            if not issubclass(inline, BaseModelAdmin):
+            if not issubclass(inline, BaseDocumentAdmin):
                 raise ImproperlyConfigured("'%s.inlines[%d]' does not inherit "
                         "from BaseModelAdmin." % (cls.__name__, idx))
-            if not inline.model:
-                raise ImproperlyConfigured("'model' is a required attribute "
+            if not inline.document:
+                raise ImproperlyConfigured("'document' is a required attribute "
                         "of '%s.inlines[%d]'." % (cls.__name__, idx))
-            if not issubclass(inline.model, models.Model):
+            if not issubclass(inline.document, BaseDocument):
                 raise ImproperlyConfigured("'%s.inlines[%d].model' does not "
                         "inherit from models.Model." % (cls.__name__, idx))
-            validate_base(inline, inline.model)
+            validate_base(inline, inline.document)
             validate_inline(inline, cls, model)
 
 def validate_inline(cls, parent, parent_model):
@@ -175,7 +177,10 @@ def validate_inline(cls, parent, parent_model):
             raise ImproperlyConfigured("'%s.fk_name is not an instance of "
                     "models.ForeignKey." % cls.__name__)
 
-    fk = _get_foreign_key(parent_model, cls.model, fk_name=cls.fk_name, can_fail=True)
+    if not issubclass(cls, EmbeddedDocumentAdmin):
+        fk = _get_foreign_key(parent_model, cls.model, fk_name=cls.fk_name, can_fail=True)
+    else:
+        fk = None
 
     # extra = 3
     if not isinstance(cls.extra, int):
@@ -189,9 +194,9 @@ def validate_inline(cls, parent, parent_model):
                 % cls.__name__)
 
     # formset
-    if hasattr(cls, 'formset') and not issubclass(cls.formset, BaseModelFormSet):
+    if hasattr(cls, 'formset') and not issubclass(cls.formset, BaseDocumentFormSet):
         raise ImproperlyConfigured("'%s.formset' does not inherit from "
-                "BaseModelFormSet." % cls.__name__)
+                "BaseDocumentFormSet." % cls.__name__)
 
     # exclude
     if hasattr(cls, 'exclude') and cls.exclude:
@@ -201,7 +206,7 @@ def validate_inline(cls, parent, parent_model):
                     "%s." % (cls.__name__, fk.name, parent_model.__name__))
 
     if hasattr(cls, "readonly_fields"):
-        check_readonly_fields(cls, cls.model, cls.model._meta)
+        check_readonly_fields(cls, cls.document, cls.document._meta)
 
 def validate_base(cls, model):
     opts = model._meta
