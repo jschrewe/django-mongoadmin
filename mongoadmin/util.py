@@ -4,6 +4,7 @@ from django.utils.encoding import force_unicode, smart_unicode, smart_str
 from django.forms.forms import pretty_name
 from django.db.models.fields import FieldDoesNotExist
 from django.utils import formats
+from django.db.models.options import get_verbose_name
 
 from mongoengine import fields
 
@@ -20,7 +21,7 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
     #if isinstance(field, RelatedObject):
     #    label = field.opts.verbose_name
     #else:
-        label = field.verbose_name
+        label = field.name.replace('_', ' ')
     except FieldDoesNotExist: 
         if name == "__unicode__":
             label = force_unicode(model._admin_opts.verbose_name)

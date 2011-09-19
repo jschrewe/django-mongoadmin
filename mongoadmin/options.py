@@ -283,6 +283,7 @@ class DocumentAdmin(BaseDocumentAdmin):
     save_on_top = False
     paginator = Paginator
     inlines = []
+    exclude = []
 
     # Custom templates (designed to be over-ridden in subclasses)
     add_form_template = None
@@ -327,7 +328,9 @@ class DocumentAdmin(BaseDocumentAdmin):
 
     def get_inline_instances(self):
         for f in self.document._fields.itervalues():
-            if isinstance(f, ListField) and isinstance(f.field, EmbeddedDocumentField) and f.name not in self.exclude:
+            if not isinstance(f, ListField):
+                continue
+            if isinstance(f.field, EmbeddedDocumentField) and f.name not in self.exclude:
                 document = self.document()
                 inline_instance = EmbeddedStackedDocument(f, document, self.admin_site)
                 self.inline_instances.append(inline_instance)
@@ -903,10 +906,10 @@ class DocumentAdmin(BaseDocumentAdmin):
         if not self.has_add_permission(request):
             raise PermissionDenied
 
-        ModelForm = self.get_form(request)
+        DocumentForm = self.get_form(request)
         formsets = []
         if request.method == 'POST':
-            form = ModelForm(request.POST, request.FILES)
+            form = DocumentForm(request.POST, request.FILES)
             if form.is_valid():
                 new_object = self.save_form(request, form, change=False)
                 form_validated = True
@@ -939,6 +942,7 @@ class DocumentAdmin(BaseDocumentAdmin):
 
                 self.log_addition(request, new_object)
                 return self.response_add(request, new_object)
+            
         else:
             # Prepare the dict of initial data from the request.
             # We have to special-case M2Ms as a list of comma-separated PKs.
@@ -950,7 +954,7 @@ class DocumentAdmin(BaseDocumentAdmin):
                     continue
                 if isinstance(f, models.ManyToManyField):
                     initial[k] = initial[k].split(",")
-            form = ModelForm(initial=initial)
+            form = DocumentForm(initial=initial)
             prefixes = {}
             for FormSet, inline in zip(self.get_formsets(request),
                                        self.inline_instances):
@@ -972,7 +976,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         for inline, formset in zip(self.inline_instances, formsets):
             fieldsets = list(inline.get_fieldsets(request))
             readonly = list(inline.get_readonly_fields(request))
-            inline_admin_formset = helpers.InlineAdminFormSet(inline, formset,
+            inline_admin_formset = mongohelpers.InlineAdminFormSet(inline, formset,
                 fieldsets, readonly, model_admin=self)
             inline_admin_formsets.append(inline_admin_formset)
             media = media + inline_admin_formset.media
