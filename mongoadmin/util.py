@@ -9,9 +9,18 @@ from django.db.models.options import get_verbose_name
 from mongoengine import fields
 
 from mongodbforms.documentoptions import AdminOptions
+from mongodbforms.util import init_document_options
 
 def patch_document(function, instance):
     setattr(instance, function.__name__, new.instancemethod(function, instance, instance.__class__))
+
+class RelationWrapper(object):
+    """
+    Wraps a document referenced from a ReferenceField with an Interface similiar to
+    django's ForeignKeyField.rel 
+    """
+    def __init__(self, document):
+        self.to = init_document_options(document)
 
 def label_for_field(name, model, model_admin=None, return_attr=False):
     attr = None

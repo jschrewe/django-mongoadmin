@@ -26,10 +26,11 @@ from django.utils.translation import ungettext
 from django.utils.encoding import force_unicode
 from django.forms.forms import pretty_name
 
-from mongoengine.fields import DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField
+from mongoengine.fields import DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, ReferenceField
 
 from mongodbforms.documentoptions import AdminOptions
 from mongoadmin import mongohelpers
+from mongoadmin.util import RelationWrapper
 
 from mongodbforms.documents import (documentform_factory, DocumentForm, 
                                   inlineformset_factory, BaseInlineDocumentFormSet)
@@ -135,12 +136,30 @@ class BaseDocumentAdmin(object):
         if db_field.choices is not None:
             return self.formfield_for_choice_field(db_field, request, **kwargs)
 
+        # handle RelatedFields
+        if isinstance(db_field, ReferenceField):
+            # For non-raw_id fields, wrap the widget with a wrapper that adds
+            # extra HTML -- the "add other" interface -- to the end of the
+            # rendered output. formfield can be None if it came from a
+            # OneToOneField with parent_link=True or a M2M intermediary.
+            form_field = formfield(db_field, **kwargs)
+            if db_field.name not in self.raw_id_fields:
+                related_modeladmin = self.admin_site._registry.get(db_field.document_type)
+                can_add_related = bool(related_modeladmin and
+                            related_modeladmin.has_add_permission(request))
+                form_field.widget = widgets.RelatedFieldWidgetWrapper(
+                            form_field.widget, RelationWrapper(db_field.document_type), self.admin_site,
+                            can_add_related=can_add_related)
+                return form_field
+
         # If we've got overrides for the formfield defined, use 'em. **kwargs
         # passed to formfield_for_dbfield override the defaults.
         for klass in db_field.__class__.mro():
             if klass in self.formfield_overrides:
                 kwargs = dict(self.formfield_overrides[klass], **kwargs)
                 return formfield(db_field, **kwargs)
+            
+        print type(db_field)
 
         # For any other type of field, just call its formfield() method.
         return formfield(db_field, **kwargs)
@@ -163,20 +182,6 @@ class BaseDocumentAdmin(object):
                 )
         return formfield(db_field, **kwargs)
 
-    def formfield_for_foreignkey(self, db_field, request=None, **kwargs):
-        """
-        Get a form Field for a ForeignKey.
-        """
-        db = kwargs.get('using')
-        if db_field.name in self.raw_id_fields:
-            kwargs['widget'] = widgets.ForeignKeyRawIdWidget(db_field.rel, using=db)
-        elif db_field.name in self.radio_fields:
-            kwargs['widget'] = widgets.AdminRadioSelect(attrs={
-                'class': get_ul_class(self.radio_fields[db_field.name]),
-            })
-            kwargs['empty_label'] = db_field.blank and _('None') or None
-
-        return db_field.formfield(**kwargs)
 
     def formfield_for_manytomany(self, db_field, request=None, **kwargs):
         """

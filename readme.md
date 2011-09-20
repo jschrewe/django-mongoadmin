@@ -47,6 +47,5 @@ Now the document should appear as usual in django's admin.
 
 django-mongoadmin currently only supports the most basic things and even they are not really tested.
 
-There is absolutely no support for ReferenceFields at the moment.
 
 

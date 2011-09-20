@@ -66,15 +66,17 @@ def _validate(cls, model):
     # list_filter
     if hasattr(cls, 'list_filter'):
         check_isseq(cls, 'list_filter', cls.list_filter)
-        for idx, fpath in enumerate(cls.list_filter):
-            try:
-                get_fields_from_path(model, fpath)
-            except (NotRelationField, FieldDoesNotExist), e:
-                raise ImproperlyConfigured(
-                    "'%s.list_filter[%d]' refers to '%s' which does not refer to a Field." % (
-                        cls.__name__, idx, fpath
-                    )
-                )
+        #for idx, fpath in enumerate(cls.list_filter):
+        #    print idx
+        #    print fpath
+        #    try:
+        #        get_fields_from_path(model, fpath)
+        #    except (NotRelationField, FieldDoesNotExist), e:
+        #        raise ImproperlyConfigured(
+        #            "'%s.list_filter[%d]' refers to '%s' which does not refer to a Field." % (
+        ##                cls.__name__, idx, fpath
+        #            )
+        #        )
 
     # list_per_page = 100
     if hasattr(cls, 'list_per_page') and not isinstance(cls.list_per_page, int):
