@@ -26,7 +26,7 @@ from django.utils.translation import ungettext
 from django.utils.encoding import force_unicode
 from django.forms.forms import pretty_name
 
-from mongoengine.fields import DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, ReferenceField
+from mongoengine.fields import DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, ReferenceField, StringField
 
 from mongodbforms.documentoptions import AdminOptions
 from mongoadmin import mongohelpers
@@ -46,7 +46,6 @@ class IncorrectLookupParameters(Exception):
 
 # Defaults for formfield_overrides. ModelAdmin subclasses can change this
 # by adding to ModelAdmin.formfield_overrides.
-
 FORMFIELD_FOR_DBFIELD_DEFAULTS = {
     DateTimeField: {
         'form_class': forms.SplitDateTimeField,
@@ -54,11 +53,8 @@ FORMFIELD_FOR_DBFIELD_DEFAULTS = {
     },
     #models.DateField:       {'widget': widgets.AdminDateWidget},
     #models.TimeField:       {'widget': widgets.AdminTimeWidget},
-    #models.TextField:       {'widget': widgets.AdminTextareaWidget},
     URLField:       {'widget': widgets.AdminURLFieldWidget},
     IntField:       {'widget': widgets.AdminIntegerFieldWidget},
-    #models.BigIntegerField: {'widget': widgets.AdminIntegerFieldWidget},
-    #models.CharField:       {'widget': widgets.AdminTextInputWidget},
     #models.ImageField:      {'widget': widgets.AdminFileWidget},
     #models.FileField:       {'widget': widgets.AdminFileWidget},
 }
@@ -77,14 +73,10 @@ def formfield(field, form_class=None, **kwargs):
         else:
             defaults['initial'] = field.default
             
+    if hasattr(field, 'max_length') and field.choices is None:
+        defaults['max_length'] = field.max_length
+            
     if field.choices is not None:
-        # Fields with choices get special treatment.
-        # TODO: How does mongoengine handle blank choices?
-        #include_blank = not field.required or not (field.default is not None or 'initial' in kwargs)
-        defaults['choices'] = field.choices
-        defaults['coerce'] = field.to_python
-        
-        form_class = forms.TypedChoiceField
         # Many of the subclass-specific formfield arguments (min_value,
         # max_value) don't apply for choice fields, so be sure to only pass
         # the values that TypedChoiceField will understand.
@@ -93,11 +85,13 @@ def formfield(field, form_class=None, **kwargs):
                          'widget', 'label', 'initial', 'help_text',
                          'error_messages', 'show_hidden_initial'):
                 del kwargs[k]
+                
     defaults.update(kwargs)
+    
     if form_class is not None:
         return form_class(**defaults)
     else:
-        return MongoFormFieldGenerator().generate(field.name, field)
+        return MongoFormFieldGenerator().generate(field.name, field, **defaults)
 
     
 class BaseDocumentAdmin(object):
@@ -152,6 +146,13 @@ class BaseDocumentAdmin(object):
                             can_add_related=can_add_related)
                 return form_field
 
+        if isinstance(db_field, StringField):
+            if db_field.max_length is None:
+                kwargs = dict({'widget': widgets.AdminTextareaWidget}, **kwargs)
+            else:
+                kwargs = dict({'widget': widgets.AdminTextInputWidget}, **kwargs)
+            return formfield(db_field, **kwargs)
+        
         # If we've got overrides for the formfield defined, use 'em. **kwargs
         # passed to formfield_for_dbfield override the defaults.
         for klass in db_field.__class__.mro():
@@ -159,8 +160,6 @@ class BaseDocumentAdmin(object):
                 kwargs = dict(self.formfield_overrides[klass], **kwargs)
                 return formfield(db_field, **kwargs)
             
-        print type(db_field)
-
         # For any other type of field, just call its formfield() method.
         return formfield(db_field, **kwargs)
 

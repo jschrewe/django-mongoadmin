@@ -23,8 +23,6 @@ def result_headers(cl):
     """
     Generates the list column headers.
     """
-    lookup_opts = cl.lookup_opts
-
     for i, field_name in enumerate(cl.list_display):
         header, attr = label_for_field(field_name, cl.model,
             model_admin = cl.model_admin,
@@ -44,7 +42,6 @@ def result_headers(cl):
             if not admin_order_field:
                 yield {"text": header}
                 continue
-
 
             # So this _is_ a sortable non-field.  Go to the yield
             # after the else clause.
@@ -74,8 +71,6 @@ def items_for_result(cl, result, form):
         row_class = ''
         try:
             f, attr, value = lookup_field(field_name, result, cl.model_admin)
-            print field_name
-            print type(f)
         except (AttributeError, ObjectDoesNotExist):
             result_repr = EMPTY_CHANGELIST_VALUE
         else:
@@ -96,13 +91,6 @@ def items_for_result(cl, result, form):
                 else:
                     result_repr = mark_safe(result_repr)
             else:
-#                if isinstance(f.rel, models.ManyToOneRel):
-#                    field_val = getattr(result, f.name)
-#                    if field_val is None:
-#                        result_repr = EMPTY_CHANGELIST_VALUE
-#                    else:
-#                        result_repr = escape(field_val)
-#                else:
                 if not hasattr(f, 'flatchoices'):
                     f.flatchoices = None
                 result_repr = display_for_field(value, f)
@@ -172,7 +160,6 @@ def results(cl):
             res._meta = res._admin_opts
             yield ResultList(None, items_for_result(cl, res, None))
 
-
 def document_result_list(cl):
     """
     Displays the headers and data list together
@@ -181,5 +168,4 @@ def document_result_list(cl):
             'result_hidden_fields': list(result_hidden_fields(cl)),
             'result_headers': list(result_headers(cl)),
             'results': list(results(cl))}
-
 result_list = register.inclusion_tag("admin/change_list_results.html")(document_result_list)

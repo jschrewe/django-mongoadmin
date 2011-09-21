@@ -1,8 +1,6 @@
 from django.contrib.admin.helpers import InlineAdminForm as DjangoInlineAdminForm
 from django.contrib.admin.helpers import InlineAdminFormSet as DjangoInlineAdminFormSet
-from django.contrib.admin.helpers import AdminForm, AdminField
-
-from mongoengine.document import EmbeddedDocument
+from django.contrib.admin.helpers import AdminForm
 
 class InlineAdminFormSet(DjangoInlineAdminFormSet):
     """
@@ -32,8 +30,6 @@ class InlineAdminForm(DjangoInlineAdminForm):
         self.formset = formset
         self.model_admin = model_admin
         self.original = original
-        #if original is not None:
-        #    self.original_content_type_id = ContentType.objects.get_for_model(original).pk
         self.show_url = original and hasattr(original, 'get_absolute_url')
         AdminForm.__init__(self, form, fieldsets, prepopulated_fields,
             readonly_fields, model_admin)
