@@ -43,6 +43,10 @@ The `admin.py` for your app needs to use mongoadmin instead of django's admin:
 	
 Now the document should appear as usual in django's admin.
 
+### Using third party apps with mongoadmin
+
+To use third party apps (i.e. apps that register their admin classes in django.contrib.admin.site) with mongoadmin you have to add `MONGOADMIN_OVERRIDE_ADMIN = True` to your settings file. This overrides the django admin site with mongoadmin's admin site.
+
 ## What works and doesn't work
 
 django-mongoadmin currently only supports the most basic things and even they are not really tested.
