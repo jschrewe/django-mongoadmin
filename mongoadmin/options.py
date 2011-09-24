@@ -340,7 +340,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             if isinstance(f.field, EmbeddedDocumentField) and f.name not in self.exclude:
                 document = self.document()
                 embedded_document = f.field.document_type
-                inline_admin = EmbeddedStackedDocument
+                inline_admin = EmbeddedStackedDocumentAdmin
                 # check if there is an admin for the embedded document in
                 # self.inlines. If there is, use this, else use default.
                 for inline_class in self.inlines:
@@ -1445,7 +1445,7 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
 class StackedDocumentInline(InlineDocumentAdmin):
     template = 'admin/edit_inline/stacked.html'
 
-class EmbeddedStackedDocument(EmbeddedDocumentAdmin):
+class EmbeddedStackedDocumentAdmin(EmbeddedDocumentAdmin):
     template = 'admin/edit_inline/stacked.html'
 
 class TabularDocumentInline(InlineDocumentAdmin):
