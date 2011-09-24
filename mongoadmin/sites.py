@@ -2,7 +2,7 @@
 #import sys
 
 from django import http, template
-from django.contrib.admin import ModelAdmin, actions
+from django.contrib.admin import ModelAdmin
 from django.contrib.admin.forms import AdminAuthenticationForm
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.contrib.contenttypes import views as contenttype_views
@@ -19,6 +19,8 @@ from django.views.decorators.cache import never_cache
 from django.conf import settings
 
 from mongoengine.base import TopLevelDocumentMetaclass
+
+from mongoadmin import actions
 
 LOGIN_FORM_KEY = 'this_is_the_login_form'
 

@@ -23,7 +23,7 @@ class DocumentChangeList(ChangeList):
         self.list_select_related = list_select_related
         self.list_per_page = list_per_page
         self.model_admin = model_admin
-
+        
         # Get search parameters from the query string.
         try:
             self.page_num = int(request.GET.get(PAGE_VAR, 0))
