@@ -26,7 +26,8 @@ from django.utils.translation import ungettext
 from django.utils.encoding import force_unicode
 from django.forms.forms import pretty_name
 
-from mongoengine.fields import DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, ReferenceField, StringField
+from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, 
+                                ReferenceField, StringField, FileField)
 
 from mongodbforms.documentoptions import AdminOptions
 from mongoadmin import mongohelpers
@@ -56,7 +57,7 @@ FORMFIELD_FOR_DBFIELD_DEFAULTS = {
     URLField:       {'widget': widgets.AdminURLFieldWidget},
     IntField:       {'widget': widgets.AdminIntegerFieldWidget},
     #models.ImageField:      {'widget': widgets.AdminFileWidget},
-    #models.FileField:       {'widget': widgets.AdminFileWidget},
+    FileField:       {'widget': widgets.AdminFileWidget},
 }
 
 csrf_protect_m = method_decorator(csrf_protect)
@@ -129,6 +130,9 @@ class BaseDocumentAdmin(object):
         # admin widgets - we just need to use a select widget of some kind.
         if db_field.choices is not None:
             return self.formfield_for_choice_field(db_field, request, **kwargs)
+        
+        if isinstance(db_field, ListField) and isinstance(db_field.field, ReferenceField):
+            return self.formfield_for_manytomany(db_field, request, **kwargs)
 
         # handle RelatedFields
         if isinstance(db_field, ReferenceField):
@@ -186,19 +190,15 @@ class BaseDocumentAdmin(object):
         """
         Get a form Field for a ManyToManyField.
         """
-        # If it uses an intermediary model that isn't auto created, don't show
-        # a field in admin.
-        if not db_field.rel.through._meta.auto_created:
-            return None
         db = kwargs.get('using')
 
         if db_field.name in self.raw_id_fields:
             kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.rel, using=db)
             kwargs['help_text'] = ''
         elif db_field.name in (list(self.filter_vertical) + list(self.filter_horizontal)):
-            kwargs['widget'] = widgets.FilteredSelectMultiple(db_field.verbose_name, (db_field.name in self.filter_vertical))
+            kwargs['widget'] = widgets.FilteredSelectMultiple(pretty_name(db_field.name), (db_field.name in self.filter_vertical))
 
-        return db_field.formfield(**kwargs)
+        return formfield(db_field, **kwargs)
 
     def _declared_fieldsets(self):
         if self.fieldsets:
@@ -1029,6 +1029,7 @@ class DocumentAdmin(BaseDocumentAdmin):
 
         DocumentForm = self.get_form(request, obj)
         formsets = []
+        # TODO: Something is wrong if formsets are invalid
         if request.method == 'POST':
             form = DocumentForm(request.POST, request.FILES, instance=obj)
             if form.is_valid():

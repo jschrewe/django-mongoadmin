@@ -9,7 +9,7 @@ from django.contrib.admin.validation import validate as django_validate
 from mongodbforms.documents import DocumentFormMetaclass, fields_for_document, BaseDocumentFormSet
 from mongodbforms.documentoptions import AdminOptions
 
-from mongoengine.fields import ListField, EmbeddedDocumentField
+from mongoengine.fields import ListField, EmbeddedDocumentField, ReferenceField
 from mongoengine.base import BaseDocument
 
 from options import BaseDocumentAdmin, EmbeddedDocumentAdmin
@@ -326,7 +326,7 @@ def validate_base(cls, model):
         check_isseq(cls, 'filter_horizontal', cls.filter_horizontal)
         for idx, field in enumerate(cls.filter_horizontal):
             f = get_field(cls, model, opts, 'filter_horizontal', field)
-            if not isinstance(f, models.ManyToManyField):
+            if not isinstance(f, ListField) and not isinstance(f.field, ReferenceField):
                 raise ImproperlyConfigured("'%s.filter_horizontal[%d]' must be "
                     "a ManyToManyField." % (cls.__name__, idx))
 
