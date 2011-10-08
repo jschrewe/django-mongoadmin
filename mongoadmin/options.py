@@ -1411,7 +1411,6 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
         defaults = {
             "form": self.form,
             "formset": self.formset,
-            "fk_name": self.fk_name,
             "fields": fields,
             "exclude": exclude,
             "formfield_callback": curry(self.formfield_for_dbfield, request=request),
@@ -1420,7 +1419,7 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
             "can_delete": self.can_delete,
         }
         defaults.update(kwargs)
-        return inlineformset_factory(self.parent_document, self.document, **defaults)
+        return inlineformset_factory(self.document, **defaults)
 
     def get_fieldsets(self, request, obj=None):
         if self.declared_fieldsets:
