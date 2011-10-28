@@ -17,18 +17,13 @@ from django.utils.text import capfirst
 from django.utils.translation import ugettext as _
 from django.views.decorators.cache import never_cache
 from django.conf import settings
+from django.contrib.admin.sites import NotRegistered, AlreadyRegistered
 
 from mongoengine.base import TopLevelDocumentMetaclass
 
 from mongoadmin import actions
 
 LOGIN_FORM_KEY = 'this_is_the_login_form'
-
-class AlreadyRegistered(Exception):
-    pass
-
-class NotRegistered(Exception):
-    pass
 
 class AdminSite(object):
     """
