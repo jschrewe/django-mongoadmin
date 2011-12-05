@@ -335,11 +335,16 @@ class DocumentAdmin(BaseDocumentAdmin):
 
     def get_inline_instances(self):
         for f in self.document._fields.itervalues():
-            if not isinstance(f, ListField):
+            if not isinstance(f, ListField) and isinstance(getattr(f, 'field', None), EmbeddedDocumentField) \
+                    or not isinstance(f, EmbeddedDocumentField):
                 continue
-            if isinstance(f.field, EmbeddedDocumentField) and f.name not in self.exclude:
+            # Should only reach here if there is an embedded document...
+            if f.name not in self.exclude:
                 document = self.document()
-                embedded_document = f.field.document_type
+                if hasattr(f, 'field'):
+                    embedded_document = f.field.document_type
+                else:
+                    embedded_document = f.document_type
                 inline_admin = EmbeddedStackedDocumentAdmin
                 # check if there is an admin for the embedded document in
                 # self.inlines. If there is, use this, else use default.
@@ -347,6 +352,12 @@ class DocumentAdmin(BaseDocumentAdmin):
                     if inline_class.document == embedded_document:
                         inline_admin = inline_class
                 inline_instance = inline_admin(f, document, self.admin_site)
+                # if f is an EmbeddedDocumentField set the maximum allowed form instances to one
+                if isinstance(f, EmbeddedDocumentField):
+                    inline_instance.max_num = 1
+                    # exclude field from normal form
+                    if f.name not in self.exclude:
+                        self.exclude.append(f.name)
                 self.inline_instances.append(inline_instance)
 
     def get_urls(self):
@@ -945,7 +956,12 @@ class DocumentAdmin(BaseDocumentAdmin):
                 if formset.is_valid() and form_validated:
                     if isinstance(inline, EmbeddedDocumentAdmin):
                         embedded_object_list = formset.save()
-                        setattr(new_object, inline.list_field.name, embedded_object_list)
+                        if isinstance(inline.field, ListField):
+                            setattr(new_object, inline.rel_name, embedded_object_list)
+                        elif len(embedded_object_list) > 0:
+                            setattr(new_object, inline.rel_name, embedded_object_list[0])
+                        else:
+                            setattr(new_object, inline.rel_name, None)
                     else:
                         formset.save()
                 
@@ -1052,7 +1068,12 @@ class DocumentAdmin(BaseDocumentAdmin):
                 if formset.is_valid() and form_validated:
                     if isinstance(inline, EmbeddedDocumentAdmin):
                         embedded_object_list = formset.save()
-                        setattr(new_object, inline.list_field.name, embedded_object_list)
+                        if isinstance(inline.field, ListField):
+                            setattr(new_object, inline.rel_name, embedded_object_list)
+                        elif len(embedded_object_list) > 0:
+                            setattr(new_object, inline.rel_name, embedded_object_list[0])
+                        else:
+                            setattr(new_object, inline.rel_name, None)
                     else:
                         formset.save()
                         
@@ -1429,17 +1450,27 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
         return [(None, {'fields': fields})]
 
 class EmbeddedDocumentAdmin(InlineDocumentAdmin):
-    def __init__(self, list_field, parent_document, admin_site):
-        self.document = list_field.field.document_type
-        self.doc_list = getattr(parent_document, list_field.name)
-        self.list_field = list_field
+    def __init__(self, field, parent_document, admin_site):
+        if hasattr(field, 'field'):
+            self.document = field.field.document_type
+        else:
+            self.document = field.document_type
+        self.doc_list = getattr(parent_document, field.name)
+        self.field = field
         if not isinstance(self.doc_list, list):
             self.doc_list = []
-        self.rel_name = list_field.name
+        self.rel_name = field.name
         super(EmbeddedDocumentAdmin, self).__init__(parent_document, admin_site)
         
     def queryset(self, request):
-        self.doc_list = getattr(self.parent_document, self.rel_name)
+        if isinstance(self.field, ListField): # list field
+            self.doc_list = getattr(self.parent_document, self.rel_name)
+        else: # embedded field
+            emb_doc = getattr(self.parent_document, self.rel_name)
+            if emb_doc is None:
+                self.doc_list = []
+            else:
+                self.doc_list = [emb_doc]
         return self.doc_list
 
 class StackedDocumentInline(InlineDocumentAdmin):
