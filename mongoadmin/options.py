@@ -335,8 +335,8 @@ class DocumentAdmin(BaseDocumentAdmin):
 
     def get_inline_instances(self):
         for f in self.document._fields.itervalues():
-            if not isinstance(f, ListField) and isinstance(getattr(f, 'field', None), EmbeddedDocumentField) \
-                    or not isinstance(f, EmbeddedDocumentField):
+            if not isinstance(f, ListField) and not isinstance(getattr(f, 'field', None), EmbeddedDocumentField) \
+                    and not isinstance(f, EmbeddedDocumentField):
                 continue
             # Should only reach here if there is an embedded document...
             if f.name not in self.exclude:
