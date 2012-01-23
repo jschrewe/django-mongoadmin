@@ -7,7 +7,7 @@ from django.contrib.admin.options import flatten_fieldsets, HORIZONTAL, VERTICAL
 from django.contrib.admin.validation import validate as django_validate
 
 from mongodbforms.documents import DocumentFormMetaclass, fields_for_document, BaseDocumentFormSet
-from mongodbforms.documentoptions import AdminOptions
+from mongodbforms.documentoptions import DocumentMetaWrapper
 
 from mongoengine.fields import ListField, EmbeddedDocumentField, ReferenceField
 from mongoengine.base import BaseDocument
@@ -213,7 +213,7 @@ def validate_inline(cls, parent, parent_model):
 def validate_base(cls, model):
     opts = model._meta
     if isinstance(opts, dict):
-        opts = AdminOptions(model)
+        opts = DocumentMetaWrapper(model)
 
     # raw_id_fields
     if hasattr(cls, 'raw_id_fields'):

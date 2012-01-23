@@ -12,7 +12,7 @@ from django.utils.html import escape, conditional_escape
 
 from mongoengine import fields
 
-from mongodbforms.documentoptions import AdminOptions
+from mongodbforms.documentoptions import DocumentMetaWrapper
 
 from mongoadmin.util import label_for_field
 from mongoadmin.util import patch_document, display_for_field

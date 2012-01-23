@@ -29,14 +29,13 @@ from django.forms.forms import pretty_name
 from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, 
                                 ReferenceField, StringField, FileField)
 
-from mongodbforms.documentoptions import AdminOptions
+from mongodbforms.documentoptions import DocumentMetaWrapper
 from mongoadmin import mongohelpers
 from mongoadmin.util import RelationWrapper
 
 from mongodbforms.documents import (documentform_factory, DocumentForm, 
                                   inlineformset_factory, BaseInlineDocumentFormSet)
-from mongodbforms.util import MongoFormFieldGenerator, init_document_options
-from mongodbforms.documents import save_instance
+from mongodbforms import MongoDefaultFormFieldGenerator, init_document_options, save_instance
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -92,7 +91,7 @@ def formfield(field, form_class=None, **kwargs):
     if form_class is not None:
         return form_class(**defaults)
     else:
-        return MongoFormFieldGenerator().generate(field.name, field, **defaults)
+        return MongoDefaultFormFieldGenerator().generate(field, **defaults)
 
     
 class BaseDocumentAdmin(object):
@@ -307,7 +306,7 @@ class DocumentAdmin(BaseDocumentAdmin):
     def __init__(self, document, admin_site):
         self.model = document
         self.document = self.model
-        self.model._admin_opts = AdminOptions(document)
+        self.model._admin_opts = DocumentMetaWrapper(document)
         self.model._meta = self.model._admin_opts 
         
         self.opts = self.model._admin_opts
@@ -490,7 +489,9 @@ class DocumentAdmin(BaseDocumentAdmin):
             "formfield_callback": curry(self.formfield_for_dbfield, request=request),
         }
         defaults.update(kwargs)
-        document = self.model()
+        print self.document
+        document = self.document()
+        print document
         return documentform_factory(document, **defaults)
 
     def get_changelist(self, request, **kwargs):
@@ -508,7 +509,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         queryset = self.queryset(request)
         model = queryset._document
-        model._admin_opts = AdminOptions(model)
+        model._admin_opts = DocumentMetaWrapper(model)
         try:
             object_id = model._admin_opts.pk.to_python(object_id)
             return queryset.get(pk=object_id)
@@ -899,11 +900,11 @@ class DocumentAdmin(BaseDocumentAdmin):
 
             qs = []
             for m in queryset:
-                if isinstance(m._meta, AdminOptions):
+                if isinstance(m._meta, DocumentMetaWrapper):
                     m._meta.document = m
                     m._meta.init_pk()
                 else:
-                    m._meta = AdminOptions(m)
+                    m._meta = DocumentMetaWrapper(m)
                 qs.append(m)
 
             response = func(self, request, qs)
@@ -1392,7 +1393,7 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
     def __init__(self, parent_document, admin_site):
         self.admin_site = admin_site
         self.parent_document = parent_document
-        self.document._admin_opts = AdminOptions(self.document)
+        self.document._admin_opts = DocumentMetaWrapper(self.document)
         self.opts = self.document._admin_opts
          
         super(InlineDocumentAdmin, self).__init__()

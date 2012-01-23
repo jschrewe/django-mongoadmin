@@ -8,7 +8,7 @@ from django.db.models.options import get_verbose_name
 
 from mongoengine import fields
 
-from mongodbforms.documentoptions import AdminOptions
+from mongodbforms.documentoptions import DocumentMetaWrapper
 from mongodbforms.util import init_document_options
 
 def patch_document(function, instance):
@@ -24,7 +24,7 @@ class RelationWrapper(object):
 
 def label_for_field(name, model, model_admin=None, return_attr=False):
     attr = None
-    model._admin_opts = AdminOptions(model)
+    model._admin_opts = DocumentMetaWrapper(model)
     try:
         field = model._admin_opts.get_field_by_name(name)[0]
     #if isinstance(field, RelatedObject):
