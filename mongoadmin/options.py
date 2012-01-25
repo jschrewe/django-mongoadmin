@@ -489,9 +489,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             "formfield_callback": curry(self.formfield_for_dbfield, request=request),
         }
         defaults.update(kwargs)
-        print self.document
         document = self.document()
-        print document
         return documentform_factory(document, **defaults)
 
     def get_changelist(self, request, **kwargs):
