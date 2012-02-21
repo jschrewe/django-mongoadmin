@@ -340,10 +340,17 @@ class DocumentAdmin(BaseDocumentAdmin):
             # Should only reach here if there is an embedded document...
             if f.name not in self.exclude:
                 document = self.document()
-                if hasattr(f, 'field'):
+                if hasattr(f, 'field') and f.field is not None:
                     embedded_document = f.field.document_type
-                else:
+                elif hasattr(f, 'document_type'):
                     embedded_document = f.document_type
+                else:
+                    # For some reason we found an embedded field were either
+                    # the field attribute or the field's document type is None.
+                    # This shouldn't happen, but appearently does happen:
+                    # https://github.com/jschrewe/django-mongoadmin/issues/4
+                    # The solution for now is to ignore that field entirely.
+                    continue
                 inline_admin = EmbeddedStackedDocumentAdmin
                 # check if there is an admin for the embedded document in
                 # self.inlines. If there is, use this, else use default.
