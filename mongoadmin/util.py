@@ -1,5 +1,3 @@
-import new
-
 from django.utils.encoding import force_unicode, smart_unicode, smart_str
 from django.forms.forms import pretty_name
 from django.db.models.fields import FieldDoesNotExist
@@ -10,9 +8,6 @@ from mongoengine import fields
 
 from mongodbforms.documentoptions import DocumentMetaWrapper
 from mongodbforms.util import init_document_options
-
-def patch_document(function, instance):
-    setattr(instance, function.__name__, new.instancemethod(function, instance, instance.__class__))
 
 class RelationWrapper(object):
     """
@@ -27,9 +22,6 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
     model._admin_opts = DocumentMetaWrapper(model)
     try:
         field = model._admin_opts.get_field_by_name(name)[0]
-    #if isinstance(field, RelatedObject):
-    #    label = field.opts.verbose_name
-    #else:
         label = field.name.replace('_', ' ')
     except FieldDoesNotExist: 
         if name == "__unicode__":

@@ -14,8 +14,8 @@ from mongoengine import fields
 
 from mongodbforms.documentoptions import DocumentMetaWrapper
 
-from mongoadmin.util import label_for_field
-from mongoadmin.util import patch_document, display_for_field
+from mongoadmin.util import label_for_field, display_for_field
+from mongodbforms.util import patch_document
 
 register = Library()
 
