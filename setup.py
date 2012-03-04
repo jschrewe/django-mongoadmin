@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
 from subprocess import call
 
 def convert_readme():
@@ -11,7 +11,7 @@ def convert_readme():
     return open('README.txt').read()
 
 setup(name='mongoadmin',
-    version='0.1.2',
+    version='0.1.3',
     description="A replacement for django's admin that works with mongodb.",
     author='Jan Schrewe',
     author_email='jan@schafproductions.com',
@@ -20,6 +20,18 @@ setup(name='mongoadmin',
     package_data={
         'mongoadmin': ['templates/admin/*'],
     },
+    classifiers=[
+        'Development Status :: 3 - Alpha',
+        'Environment :: Web Environment',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: BSD License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Framework :: Django',
+    ],
     license='New BSD License',
     long_description=convert_readme(),
+    include_package_data=True,
+    zip_safe=False,
+    install_requires=['setuptools', 'django>=1.3', 'mongoengine', 'mongodbforms',],
 )
