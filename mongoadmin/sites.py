@@ -1,6 +1,3 @@
-#import re
-#import sys
-
 from django import http, template
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.forms import AdminAuthenticationForm
@@ -21,7 +18,7 @@ from django.contrib.admin.sites import NotRegistered, AlreadyRegistered
 
 from mongoengine.base import TopLevelDocumentMetaclass
 
-from mongoadmin import actions
+from mongoadmin import actions, DocumentAdmin
 
 LOGIN_FORM_KEY = 'this_is_the_login_form'
 
@@ -66,8 +63,10 @@ class AdminSite(object):
 
         If a model is abstract, this will raise ImproperlyConfigured.
         """
-        if not admin_class:
+        if isinstance(model_or_iterable, ModelBase) and not admin_class:
             admin_class = ModelAdmin
+        if isinstance(model_or_iterable, TopLevelDocumentMetaclass) and not admin_class:
+            admin_class = DocumentAdmin
 
         # Don't import the humongous validation code unless required
         if admin_class and settings.DEBUG:
@@ -75,9 +74,8 @@ class AdminSite(object):
         else:
             validate = lambda model, adminclass: None
 
-        if isinstance(model_or_iterable, ModelBase):
-            model_or_iterable = [model_or_iterable]
-        if isinstance(model_or_iterable, TopLevelDocumentMetaclass):
+        if isinstance(model_or_iterable, ModelBase) or \
+                isinstance(model_or_iterable, TopLevelDocumentMetaclass):
             model_or_iterable = [model_or_iterable]
 
         for model in model_or_iterable:
@@ -109,7 +107,8 @@ class AdminSite(object):
 
         If a model isn't already registered, this will raise NotRegistered.
         """
-        if isinstance(model_or_iterable, ModelBase):
+        if isinstance(model_or_iterable, ModelBase) or \
+                isinstance(model_or_iterable, TopLevelDocumentMetaclass):
             model_or_iterable = [model_or_iterable]
         for model in model_or_iterable:
             if model not in self._registry:

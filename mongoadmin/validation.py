@@ -30,7 +30,7 @@ def _validate(cls, model):
     """
     # Before we can introspect models, they need to be fully loaded so that
     # inter-relations are set up correctly. We force that here.
-    models.get_apps()
+    #models.get_apps()
     
     opts = model._meta
     validate_base(cls, model)
@@ -389,6 +389,8 @@ def check_formfield(cls, model, opts, label, field):
             if hasattr(model, field) and isinstance(getattr(model, field), ListField):
                 if isinstance(model._fields[field].field, EmbeddedDocumentField):
                     return
+            if hasattr(model, field) and isinstance(getattr(model, field), EmbeddedDocumentField):
+                return
             raise ImproperlyConfigured("'%s.%s' refers to field '%s' that "
                 "is missing from the form." % (cls.__name__, label, field))
 

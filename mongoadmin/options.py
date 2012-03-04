@@ -112,6 +112,7 @@ class BaseDocumentAdmin(object):
     ordering = None
 
     def __init__(self):
+        super(BaseDocumentAdmin, self).__init__()
         overrides = FORMFIELD_FOR_DBFIELD_DEFAULTS.copy()
         overrides.update(self.formfield_overrides)
         self.formfield_overrides = overrides
@@ -304,6 +305,8 @@ class DocumentAdmin(BaseDocumentAdmin):
     actions_selection_counter = True
 
     def __init__(self, document, admin_site):
+        super(DocumentAdmin, self).__init__()
+        
         self.model = document
         self.document = self.model
         self.model._admin_opts = DocumentMetaWrapper(document)
@@ -318,10 +321,13 @@ class DocumentAdmin(BaseDocumentAdmin):
             # all embedded admins are handled by self.get_inline_instances()
             if issubclass(inline_class, EmbeddedDocumentAdmin):
                 continue
-            inline_instance = inline_class(self.model, self.admin_site)
+            inline_instance = inline_class(self.document, self.admin_site)
             self.inline_instances.append(inline_instance)
-        
-        self.get_inline_instances()    
+            
+        # Without this exclude is weirdly shared between all
+        # instances derived from DocumentAdmin. 
+        self.exclude = list(self.exclude)
+        self.get_inline_instances()
         
         if 'action_checkbox' not in self.list_display and self.actions is not None:
             self.list_display = ['action_checkbox'] +  list(self.list_display)
@@ -330,41 +336,40 @@ class DocumentAdmin(BaseDocumentAdmin):
                 if name != 'action_checkbox':
                     self.list_display_links = [name]
                     break
-        super(DocumentAdmin, self).__init__()
 
     def get_inline_instances(self):
         for f in self.document._fields.itervalues():
-            if not isinstance(f, ListField) and not isinstance(getattr(f, 'field', None), EmbeddedDocumentField) \
-                    and not isinstance(f, EmbeddedDocumentField):
+            if not (isinstance(f, ListField) and isinstance(getattr(f, 'field', None), EmbeddedDocumentField)) and not isinstance(f, EmbeddedDocumentField):
                 continue
             # Should only reach here if there is an embedded document...
-            if f.name not in self.exclude:
-                document = self.document()
-                if hasattr(f, 'field') and f.field is not None:
-                    embedded_document = f.field.document_type
-                elif hasattr(f, 'document_type'):
-                    embedded_document = f.document_type
-                else:
-                    # For some reason we found an embedded field were either
-                    # the field attribute or the field's document type is None.
-                    # This shouldn't happen, but appearently does happen:
-                    # https://github.com/jschrewe/django-mongoadmin/issues/4
-                    # The solution for now is to ignore that field entirely.
-                    continue
-                inline_admin = EmbeddedStackedDocumentAdmin
-                # check if there is an admin for the embedded document in
-                # self.inlines. If there is, use this, else use default.
-                for inline_class in self.inlines:
-                    if inline_class.document == embedded_document:
-                        inline_admin = inline_class
-                inline_instance = inline_admin(f, document, self.admin_site)
-                # if f is an EmbeddedDocumentField set the maximum allowed form instances to one
-                if isinstance(f, EmbeddedDocumentField):
-                    inline_instance.max_num = 1
-                    # exclude field from normal form
-                    if f.name not in self.exclude:
-                        self.exclude.append(f.name)
-                self.inline_instances.append(inline_instance)
+            if f.name in self.exclude:
+                continue
+            document = self.document()
+            if hasattr(f, 'field') and f.field is not None:
+                embedded_document = f.field.document_type
+            elif hasattr(f, 'document_type'):
+                embedded_document = f.document_type
+            else:
+                # For some reason we found an embedded field were either
+                # the field attribute or the field's document type is None.
+                # This shouldn't happen, but appearently does happen:
+                # https://github.com/jschrewe/django-mongoadmin/issues/4
+                # The solution for now is to ignore that field entirely.
+                continue
+            inline_admin = EmbeddedStackedDocumentAdmin
+            # check if there is an admin for the embedded document in
+            # self.inlines. If there is, use this, else use default.
+            for inline_class in self.inlines:
+                if inline_class.document == embedded_document:
+                    inline_admin = inline_class
+            inline_instance = inline_admin(f, document, self.admin_site)
+            # if f is an EmbeddedDocumentField set the maximum allowed form instances to one
+            if isinstance(f, EmbeddedDocumentField):
+                inline_instance.max_num = 1
+                # exclude field from normal form
+                if f.name not in self.exclude:
+                    self.exclude.append(f.name)
+            self.inline_instances.append(inline_instance)
 
     def get_urls(self):
         from django.conf.urls.defaults import patterns, url
@@ -1398,7 +1403,8 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
     def __init__(self, parent_document, admin_site):
         self.admin_site = admin_site
         self.parent_document = parent_document
-        self.document._admin_opts = DocumentMetaWrapper(self.document)
+        if not hasattr(self.document, '_admin_opts'):
+            self.document._admin_opts = DocumentMetaWrapper(self.document)
         self.opts = self.document._admin_opts
          
         super(InlineDocumentAdmin, self).__init__()
@@ -1466,6 +1472,14 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
         if not isinstance(self.doc_list, list):
             self.doc_list = []
         self.rel_name = field.name
+        
+        self.document._admin_opts = DocumentMetaWrapper(self.document)
+        if self.verbose_name is None:
+            self.verbose_name = "Field: %s (Document: %s)" % (capfirst(field.name), self.document._admin_opts.verbose_name)
+        
+        if self.verbose_name_plural is None:
+            self.verbose_name_plural = "Field: %s (Document:  %s)" % (capfirst(field.name), self.document._admin_opts.verbose_name_plural)
+        
         super(EmbeddedDocumentAdmin, self).__init__(parent_document, admin_site)
         
     def queryset(self, request):
