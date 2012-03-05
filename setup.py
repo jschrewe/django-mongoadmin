@@ -17,9 +17,6 @@ setup(name='mongoadmin',
     author_email='jan@schafproductions.com',
     url='http://www.schafproductions.com/projects/mongo-admin/',
     packages=['mongoadmin', 'mongoadmin.templatetags',],
-    package_data={
-        'mongoadmin': ['templates/admin/*'],
-    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
