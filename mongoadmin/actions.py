@@ -55,12 +55,15 @@ def _delete_selected(modeladmin, request, queryset):
             for obj in queryset:
                 obj_display = force_unicode(obj)
                 modeladmin.log_deletion(request, obj, obj_display)
+                # call the objects delete method to ensure signals are
+                # processed.
+                obj.delete()
             # This is what you get if you have to monkey patch every object in a changelist
             # No queryset object, I can tell ya. So we get a new one and delete that. 
-            pk_list = [o.pk for o in queryset]
-            klass = queryset[0].__class__
-            qs = klass.objects.filter(pk__in=pk_list)
-            qs.delete()
+            #pk_list = [o.pk for o in queryset]
+            #klass = queryset[0].__class__
+            #qs = klass.objects.filter(pk__in=pk_list)
+            #qs.delete()
             modeladmin.message_user(request, _("Successfully deleted %(count)d %(items)s.") % {
                 "count": n, "items": model_ngettext(modeladmin.opts, n)
             })
