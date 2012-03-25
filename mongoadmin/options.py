@@ -27,7 +27,7 @@ from django.utils.encoding import force_unicode
 from django.forms.forms import pretty_name
 
 from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, 
-                                ReferenceField, StringField, FileField)
+                                ReferenceField, StringField, FileField, ImageField)
 
 from mongodbforms.documentoptions import DocumentMetaWrapper
 from mongoadmin import mongohelpers
@@ -55,8 +55,8 @@ FORMFIELD_FOR_DBFIELD_DEFAULTS = {
     #models.TimeField:       {'widget': widgets.AdminTimeWidget},
     URLField:       {'widget': widgets.AdminURLFieldWidget},
     IntField:       {'widget': widgets.AdminIntegerFieldWidget},
-    #models.ImageField:      {'widget': widgets.AdminFileWidget},
-    FileField:       {'widget': widgets.AdminFileWidget},
+    ImageField:     {'widget': widgets.AdminFileWidget},
+    FileField:      {'widget': widgets.AdminFileWidget},
 }
 
 csrf_protect_m = method_decorator(csrf_protect)
