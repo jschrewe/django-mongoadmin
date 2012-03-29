@@ -4,7 +4,11 @@ from django.utils.encoding import force_unicode, smart_str
 from django.utils.translation import ugettext
 from django.db import models
 from django.core.exceptions import SuspiciousOperation
-from django.contrib.admin.views.main import ChangeList, ALL_VAR, PAGE_VAR, IS_POPUP_VAR, TO_FIELD_VAR, ERROR_FLAG, SEARCH_VAR, ORDER_VAR, ORDER_TYPE_VAR, MAX_SHOW_ALL_ALLOWED
+from django.contrib.admin.views.main import ChangeList, ALL_VAR, PAGE_VAR, IS_POPUP_VAR, TO_FIELD_VAR, ERROR_FLAG, SEARCH_VAR, ORDER_VAR, ORDER_TYPE_VAR
+try:
+    from django.contrib.admin.views.main import MAX_SHOW_ALL_ALLOWED
+except ImportError:
+    MAX_SHOW_ALL_ALLOWED = None
 from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.paginator import InvalidPage
 
@@ -47,7 +51,14 @@ class DocumentChangeList(ChangeList):
         self.query_set = self.get_query_set()
         self.get_results(request)
         self.title = (self.is_popup and ugettext('Select %s') % force_unicode(self.opts.verbose_name) or ugettext('Select %s to change') % force_unicode(self.opts.verbose_name))
-        self.filter_specs, self.has_filters = self.get_filters(request)
+        
+        try:
+            self.filter_specs, self.has_filters = self.get_filters(request)
+        except ValueError:
+            print "FIXME: This is a workaround for Django 1.4 new list_filter"
+            (self.filter_specs, self.has_filters, remaining_lookup_params,
+             use_distinct) = self.get_filters(request)
+             
         self.pk_attname = self.lookup_opts.pk_name
   
     def get_results(self, request):
@@ -67,7 +78,13 @@ class DocumentChangeList(ChangeList):
         #else:
         full_result_count = self.root_query_set.count()
 
-        can_show_all = result_count <= MAX_SHOW_ALL_ALLOWED
+        # Django <= 1.3 uses a module level constant
+        # Django 1.4 uses a change list attribute
+        # check what we have here 
+        if hasattr(self, 'list_max_show_all'):
+            can_show_all = result_count <= self.list_max_show_all
+        else:
+            can_show_all = result_count <= MAX_SHOW_ALL_ALLOWED
         multi_page = result_count > self.list_per_page
 
         # Get the list of objects to display on this page.
