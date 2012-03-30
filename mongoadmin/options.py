@@ -908,16 +908,7 @@ class DocumentAdmin(BaseDocumentAdmin):
                 # Perform the action only on the selected objects
                 queryset = queryset.filter(pk__in=selected)
 
-            qs = []
-            for m in queryset:
-                if isinstance(m._meta, DocumentMetaWrapper):
-                    m._meta.document = m
-                    m._meta.init_pk()
-                else:
-                    m._meta = DocumentMetaWrapper(m)
-                qs.append(m)
-
-            response = func(self, request, qs)
+            response = func(self, request, queryset)
 
             # Actions may return an HttpResponse, which will be used as the
             # response from the POST. If not, we'll be a good little HTTP
