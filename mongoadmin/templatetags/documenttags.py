@@ -50,10 +50,14 @@ def document_result_list(cl):
     Displays the headers and data list together
     """
     headers = list(result_headers(cl))
-    num_sorted_fields = 0
-    for h in headers:
-        if h['sortable'] and h['sorted']:
-            num_sorted_fields += 1
+    try:
+        num_sorted_fields = 0
+        for h in headers:
+            if h['sortable'] and h['sorted']:
+                num_sorted_fields += 1
+    except KeyError:
+        pass
+    
     return {'cl': cl,
             'result_hidden_fields': list(result_hidden_fields(cl)),
             'result_headers': headers,

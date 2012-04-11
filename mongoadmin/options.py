@@ -354,7 +354,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             else:
                 # For some reason we found an embedded field were either
                 # the field attribute or the field's document type is None.
-                # This shouldn't happen, but appearently does happen:
+                # This shouldn't happen, but apparently does happen:
                 # https://github.com/jschrewe/django-mongoadmin/issues/4
                 # The solution for now is to ignore that field entirely.
                 continue
