@@ -3,7 +3,7 @@ from django.forms.formsets import all_valid
 from django.forms.models import modelformset_factory
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin import widgets, helpers
-from django.contrib.admin.util import unquote, flatten_fieldsets, get_deleted_objects, model_format_dict
+from django.contrib.admin.util import unquote, flatten_fieldsets, model_format_dict
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_protect
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -35,7 +35,7 @@ from mongoadmin.util import RelationWrapper
 
 from mongodbforms.documents import (documentform_factory, DocumentForm, 
                                   inlineformset_factory, BaseInlineDocumentFormSet)
-from mongodbforms import MongoDefaultFormFieldGenerator, init_document_options, save_instance
+from mongodbforms import MongoDefaultFormFieldGenerator, save_instance
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -279,6 +279,8 @@ class DocumentAdmin(BaseDocumentAdmin):
     list_display_links = ()
     list_filter = ()
     list_select_related = False
+    # see __init__ for django < 1.4
+    list_max_show_all = 200
     list_per_page = 100
     list_editable = ()
     search_fields = ()
@@ -328,14 +330,14 @@ class DocumentAdmin(BaseDocumentAdmin):
         # instances derived from DocumentAdmin. 
         self.exclude = list(self.exclude)
         self.get_inline_instances()
-        
-        if 'action_checkbox' not in self.list_display and self.actions is not None:
-            self.list_display = ['action_checkbox'] +  list(self.list_display)
-        if not self.list_display_links:
-            for name in self.list_display:
-                if name != 'action_checkbox':
-                    self.list_display_links = [name]
-                    break
+                
+        # If someone patched their MAX_SHOW_ALL_ALLOWED in django 1.3, we 
+        # get the value here and proceed as normal.
+        try:
+            from django.contrib.admin.views.main import MAX_SHOW_ALL_ALLOWED
+            self.list_max_show_all = MAX_SHOW_ALL_ALLOWED
+        except ImportError:
+            pass
 
     def get_inline_instances(self):
         for f in self.document._fields.itervalues():
@@ -643,7 +645,6 @@ class DocumentAdmin(BaseDocumentAdmin):
 
         # Convert the actions into a SortedDict keyed by name
         # and sorted by description.
-        actions.sort(key=lambda k: k[2].lower())
         actions = SortedDict([
             (name, (func, name, desc))
             for func, name, desc in actions
@@ -691,6 +692,31 @@ class DocumentAdmin(BaseDocumentAdmin):
         else:
             description = capfirst(action.replace('_', ' '))
         return func, action, description
+
+    def get_list_display(self, request):
+        """
+        Return a sequence containing the fields to be displayed on the
+        changelist.
+        """
+        return self.list_display
+
+    def get_list_display_links(self, request, list_display):
+        """
+        Return a sequence containing the fields to be displayed as links
+        on the changelist. The list_display parameter is the list of fields
+        returned by get_list_display().
+        """
+        if self.list_display_links or not list_display:
+            return self.list_display_links
+        else:
+            # Use only the first item in list_display as link
+            return list(list_display)[:1]
+        
+    def get_ordering(self, request):
+        """
+        Hook for specifying field ordering.
+        """
+        return self.ordering or ()  # otherwise we might try to *None, which is bad ;)
 
     def construct_change_message(self, request, form, formsets):
         """
@@ -1142,22 +1168,22 @@ class DocumentAdmin(BaseDocumentAdmin):
         if not self.has_change_permission(request, None):
             raise PermissionDenied
 
+        list_display = self.get_list_display(request)
+        list_display_links = self.get_list_display_links(request, list_display)
+
         # Check actions to see if any are available on this changelist
         actions = self.get_actions(request)
-
-        # Remove action checkboxes if there aren't any actions available.
-        list_display = list(self.list_display)
-        if not actions:
-            try:
-                list_display.remove('action_checkbox')
-            except ValueError:
-                pass
+        if actions:
+            # Add the action checkboxes if there are any actions available.
+            list_display = ['action_checkbox'] +  list(list_display)
 
         ChangeList = self.get_changelist(request)
         try:
-            cl = ChangeList(request, self.model, list_display, self.list_display_links,
-                self.list_filter, self.date_hierarchy, self.search_fields,
-                self.list_select_related, self.list_per_page, self.list_editable, self)
+            cl = ChangeList(request, self.model, list_display,
+                list_display_links, self.list_filter, self.date_hierarchy,
+                self.search_fields, self.list_select_related,
+                self.list_per_page, self.list_max_show_all, self.list_editable,
+                self) 
         except IncorrectLookupParameters:
             # Wacky lookup parameters were given, so redirect to the main
             # changelist page, without parameters, and pass an 'invalid=1'
