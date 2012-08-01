@@ -46,7 +46,7 @@ class DocumentChangeList(ChangeList):
 
         # Get the list of objects to display on this page.
         if (self.show_all and can_show_all) or not multi_page:
-            result_list = self.query_set.clone()
+            result_list = self.query_set
         else:
             try:
                 result_list = paginator.page(self.page_num+1).object_list
