@@ -339,6 +339,13 @@ class DocumentAdmin(BaseDocumentAdmin):
         except ImportError:
             pass
 
+    @property
+    def content_type(self):
+        name = app_label, model = self.opts.app_label, self.opts.module_name
+        name = '%s %s'%name
+        ret = ContentType.objects.get_or_create(name=name, app_label=app_label, model=model)
+        return ret[0]
+
     def get_inline_instances(self):
         for f in self.document._fields.itervalues():
             if not (isinstance(f, ListField) and isinstance(getattr(f, 'field', None), EmbeddedDocumentField)) and not isinstance(f, EmbeddedDocumentField):
@@ -567,7 +574,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         from django.contrib.admin.models import LogEntry, ADDITION
         LogEntry.objects.log_action(
             user_id         = request.user.pk,
-            content_type_id = None,
+            content_type_id = self.content_type.id,
             object_id       = object.pk,
             object_repr     = force_unicode(object),
             action_flag     = ADDITION
@@ -582,7 +589,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         from django.contrib.admin.models import LogEntry, CHANGE
         LogEntry.objects.log_action(
             user_id         = request.user.pk,
-            content_type_id = None,
+            content_type_id = self.content_type.id,
             object_id       = object.pk,
             object_repr     = force_unicode(object),
             action_flag     = CHANGE,
@@ -599,7 +606,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         from django.contrib.admin.models import LogEntry, DELETION
         LogEntry.objects.log_action(
             user_id         = request.user.id,
-            content_type_id = None,
+            content_type_id = self.content_type.id,
             object_id       = object.pk,
             object_repr     = object_repr,
             action_flag     = DELETION
@@ -1378,10 +1385,16 @@ class DocumentAdmin(BaseDocumentAdmin):
         app_label = opts.app_label
         action_list = LogEntry.objects.filter(
             object_id = object_id,
-            content_type__id__exact = ContentType.objects.get_for_model(model).id
+            content_type__id__exact = self.content_type.id
         ).select_related().order_by('action_time')
         # If no history was found, see whether this object even exists.
-        obj = get_object_or_404(model, pk=unquote(object_id))
+
+        from mongoengine.base import ValidationError
+        try:
+            obj = model.objects.get(id=object_id)
+        except ValidationError, e:
+            raise Http404('No %s matches the given query.' % model._meta.object_name)
+
         context = {
             'title': _('Change history: %s') % force_unicode(obj),
             'action_list': action_list,
@@ -1389,6 +1402,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             'object': obj,
             'root_path': self.admin_site.root_path,
             'app_label': app_label,
+            'opts': opts,
         }
         context.update(extra_context or {})
         context_instance = template.RequestContext(request, current_app=self.admin_site.name)
