@@ -116,6 +116,15 @@ class BaseDocumentAdmin(object):
         overrides = FORMFIELD_FOR_DBFIELD_DEFAULTS.copy()
         overrides.update(self.formfield_overrides)
         self.formfield_overrides = overrides
+        
+    def _get_formfield(self, db_field, **kwargs):
+        """Return overridden formfield if exists, otherwise default formfield"""
+        # If we've got overrides for the formfield defined, use 'em. **kwargs
+        # passed to formfield_for_dbfield override the defaults.
+        for klass in db_field.__class__.mro():
+            if klass in self.formfield_overrides:
+                kwargs = dict(self.formfield_overrides[klass], **kwargs)
+        return formfield(db_field, **kwargs)        
 
     def formfield_for_dbfield(self, db_field, **kwargs):
         """
@@ -140,7 +149,7 @@ class BaseDocumentAdmin(object):
             # extra HTML -- the "add other" interface -- to the end of the
             # rendered output. formfield can be None if it came from a
             # OneToOneField with parent_link=True or a M2M intermediary.
-            form_field = formfield(db_field, **kwargs)
+            form_field = self._get_formfield(db_field, **kwargs)
             if db_field.name not in self.raw_id_fields:
                 related_modeladmin = self.admin_site._registry.get(db_field.document_type)
                 can_add_related = bool(related_modeladmin and
@@ -155,17 +164,10 @@ class BaseDocumentAdmin(object):
                 kwargs = dict({'widget': widgets.AdminTextareaWidget}, **kwargs)
             else:
                 kwargs = dict({'widget': widgets.AdminTextInputWidget}, **kwargs)
-            return formfield(db_field, **kwargs)
+            return self._get_formfield(db_field, **kwargs)
         
-        # If we've got overrides for the formfield defined, use 'em. **kwargs
-        # passed to formfield_for_dbfield override the defaults.
-        for klass in db_field.__class__.mro():
-            if klass in self.formfield_overrides:
-                kwargs = dict(self.formfield_overrides[klass], **kwargs)
-                return formfield(db_field, **kwargs)
-            
         # For any other type of field, just call its formfield() method.
-        return formfield(db_field, **kwargs)
+        return self._get_formfield(db_field, **kwargs)
 
     def formfield_for_choice_field(self, db_field, request=None, **kwargs):
         """
