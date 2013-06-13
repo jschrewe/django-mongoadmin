@@ -1,14 +1,8 @@
 from django.template import Library
-
 from django.contrib.admin.templatetags.admin_list import (result_hidden_fields, ResultList, items_for_result,
                                                           result_headers)
 from django.db.models.fields import FieldDoesNotExist
 
-from mongoengine import fields
-
-from mongodbforms.documentoptions import DocumentMetaWrapper
-
-from mongoadmin.util import label_for_field, display_for_field
 from mongodbforms.util import patch_document
 
 register = Library()
