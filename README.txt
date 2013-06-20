@@ -9,7 +9,7 @@ Requirements
 ------------
 
 -  Django >= 1.3
--  `mongoengine <http://mongoengine.org/>`_
+-  `mongoengine <http://mongoengine.org/>`_ >= 0.6
 -  `django-mongodbforms <https://github.com/jschrewe/django-mongodbforms>`_
 
 Usage
