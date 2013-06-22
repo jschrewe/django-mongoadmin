@@ -37,8 +37,9 @@ from mongodbforms.documentoptions import DocumentMetaWrapper
 from mongoadmin import mongohelpers
 from mongoadmin.util import RelationWrapper
 
-from mongodbforms.documents import (documentform_factory, DocumentForm, 
-                                  inlineformset_factory, BaseInlineDocumentFormSet)
+from mongodbforms.documents import (documentform_factory, DocumentForm, EmbeddedDocumentForm,
+                                  inlineformset_factory, BaseInlineDocumentFormSet, 
+                                  embeddedformset_factory, EmbeddedDocumentFormSet)
 from mongodbforms import MongoDefaultFormFieldGenerator, save_instance
 
 HORIZONTAL, VERTICAL = 1, 2
@@ -335,8 +336,9 @@ class DocumentAdmin(BaseDocumentAdmin):
         # Without this exclude is weirdly shared between all
         # instances derived from DocumentAdmin. 
         self.exclude = list(self.exclude)
-        self.get_inline_instances()
-                
+        if not isinstance(self, EmbeddedDocumentAdmin):
+            self.get_inline_instances()
+        
         # If someone patched their MAX_SHOW_ALL_ALLOWED in django 1.3, we 
         # get the value here and proceed as normal.
         try:
@@ -988,10 +990,19 @@ class DocumentAdmin(BaseDocumentAdmin):
                 prefixes[prefix] = prefixes.get(prefix, 0) + 1
                 if prefixes[prefix] != 1:
                     prefix = "%s-%s" % (prefix, prefixes[prefix])
-                formset = FormSet(data=request.POST, files=request.FILES,
-                                  instance=new_object,
-                                  save_as_new="_saveasnew" in request.POST,
-                                  prefix=prefix, queryset=inline.queryset(request))
+                    
+                formset_args = {
+                    "data": request.POST,
+                    "files": request.FILES,
+                    "prefix": prefix,
+                    "queryset": inline.queryset(request),
+                    "save_as_new": "_saveasnew" in request.POST,
+                }
+                if isinstance(inline, EmbeddedDocumentAdmin):
+                    formset_args["parent_document"] = new_object
+                else:
+                    formset_args["instance"] = new_object
+                formset = FormSet(**formset_args)
                 formsets.append(formset)
                 
                 if formset.is_valid() and form_validated:
@@ -1034,8 +1045,18 @@ class DocumentAdmin(BaseDocumentAdmin):
                 prefixes[prefix] = prefixes.get(prefix, 0) + 1
                 if prefixes[prefix] != 1:
                     prefix = "%s-%s" % (prefix, prefixes[prefix])
-                formset = FormSet(instance=self.model(), prefix=prefix,
-                                  queryset=inline.queryset(request))
+                    
+                formset_args = {
+                    "prefix": prefix,
+                    "queryset": inline.queryset(request),
+                    "save_as_new": "_saveasnew" in request.POST,
+                }
+                if isinstance(inline, EmbeddedDocumentAdmin):
+                    formset_args["parent_document"] = inline.parent_document
+                else:
+                    formset_args["instance"] = self.model()
+                formset = FormSet(**formset_args)
+                
                 formsets.append(formset)
 
         adminForm = helpers.AdminForm(form, list(self.get_fieldsets(request)),
@@ -1102,9 +1123,18 @@ class DocumentAdmin(BaseDocumentAdmin):
                 prefixes[prefix] = prefixes.get(prefix, 0) + 1
                 if prefixes[prefix] != 1:
                     prefix = "%s-%s" % (prefix, prefixes[prefix])
-                formset = FormSet(request.POST, request.FILES,
-                                  instance=new_object, prefix=prefix,
-                                  queryset=inline.queryset(request))
+                    
+                formset_args = {
+                    "data": request.POST,
+                    "files": request.FILES,
+                    "prefix": prefix,
+                    "queryset": inline.queryset(request),
+                }
+                if isinstance(inline, EmbeddedDocumentAdmin):
+                    formset_args["parent_document"] = obj
+                else:
+                    formset_args["instance"] = obj
+                formset = FormSet(**formset_args)
 
                 if formset.is_valid() and form_validated:
                     if isinstance(inline, EmbeddedDocumentAdmin):
@@ -1131,14 +1161,25 @@ class DocumentAdmin(BaseDocumentAdmin):
             form = DocumentForm(instance=obj)
             prefixes = {}
             # set the actual parent document on the inline admins
+            print "change view"
+            print type(self)
+            print zip(self.get_formsets(request, obj), self.inline_instances)
             for FormSet, inline in zip(self.get_formsets(request, obj), self.inline_instances):
                 inline.parent_document = obj
                 prefix = FormSet.get_default_prefix()
                 prefixes[prefix] = prefixes.get(prefix, 0) + 1
                 if prefixes[prefix] != 1:
                     prefix = "%s-%s" % (prefix, prefixes[prefix])
-                formset = FormSet(instance=obj, prefix=prefix,
-                                  queryset=inline.queryset(request))
+                
+                formset_args = {
+                    "prefix": prefix,
+                    "queryset": inline.queryset(request),
+                }
+                if isinstance(inline, EmbeddedDocumentAdmin):
+                    formset_args["parent_document"] = obj
+                else:
+                    formset_args["instance"] = obj
+                formset = FormSet(**formset_args)
                 formsets.append(formset)
 
         adminForm = helpers.AdminForm(form, self.get_fieldsets(request, obj),
@@ -1437,9 +1478,8 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
     verbose_name_plural = None
     can_delete = True
 
-    def __init__(self, parent_document, admin_site):
+    def __init__(self, admin_site):
         self.admin_site = admin_site
-        self.parent_document = parent_document
         if not hasattr(self.document, '_admin_opts'):
             self.document._admin_opts = DocumentMetaWrapper(self.document)
         self.opts = self.document._admin_opts
@@ -1499,6 +1539,9 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
         return [(None, {'fields': fields})]
 
 class EmbeddedDocumentAdmin(InlineDocumentAdmin):
+    formset = EmbeddedDocumentFormSet
+    form = EmbeddedDocumentForm
+    
     def __init__(self, field, parent_document, admin_site):
         if hasattr(field, 'field'):
             self.document = field.field.document_type
@@ -1517,7 +1560,9 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
         if self.verbose_name_plural is None:
             self.verbose_name_plural = "Field: %s (Document:  %s)" % (capfirst(field.name), self.document._admin_opts.verbose_name_plural)
         
-        super(EmbeddedDocumentAdmin, self).__init__(parent_document, admin_site)
+        self.parent_document = parent_document
+        
+        super(EmbeddedDocumentAdmin, self).__init__(admin_site)
         
     def queryset(self, request):
         if isinstance(self.field, ListField): # list field
@@ -1529,6 +1574,65 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
             else:
                 self.doc_list = [emb_doc]
         return self.doc_list
+    
+    def get_form(self, request, obj=None, **kwargs):
+        """
+        Returns a Form class for use in the admin add view. This is used by
+        add_view and change_view.
+        """
+        if self.declared_fieldsets:
+            fields = flatten_fieldsets(self.declared_fieldsets)
+        else:
+            fields = None
+        if self.exclude is None:
+            exclude = []
+        else:
+            exclude = list(self.exclude)
+        exclude.extend(kwargs.get("exclude", []))
+        exclude.extend(self.get_readonly_fields(request, obj))
+        # if exclude is an empty list we pass None to be consistant with the
+        # default on modelform_factory
+        exclude = exclude or None
+        defaults = {
+            "form": self.form,
+            "fields": fields,
+            "exclude": exclude,
+            "formfield_callback": curry(self.formfield_for_dbfield, request=request),
+            "extra_attrs": {"embedded_field_name": self.field.name}
+        }
+        defaults.update(kwargs)
+        document = self.document()
+        form = documentform_factory(document, **defaults)
+        return form
+    
+    def get_formset(self, request, obj=None, **kwargs):
+        """Returns a BaseInlineFormSet class for use in admin add/change views."""
+        if self.declared_fieldsets:
+            fields = flatten_fieldsets(self.declared_fieldsets)
+        else:
+            fields = None
+        if self.exclude is None:
+            exclude = []
+        else:
+            exclude = list(self.exclude)
+        exclude.extend(kwargs.get("exclude", []))
+        exclude.extend(self.get_readonly_fields(request, obj))
+        # if exclude is an empty list we use None, since that's the actual default
+        exclude = exclude or None
+        if not hasattr(self.form, 'Meta') or not hasattr(self.form.Meta, 'embedded_field_name'):
+            self.form = self.get_form(request, obj)
+        defaults = {
+            "form": self.form,
+            "formset": self.formset,
+            "fields": fields,
+            "exclude": exclude,
+            "formfield_callback": curry(self.formfield_for_dbfield, request=request),
+            "extra": self.extra,
+            "max_num": self.max_num,
+            "can_delete": self.can_delete,
+        }
+        defaults.update(kwargs)
+        return embeddedformset_factory(self.document, self.parent_document, **defaults)
 
 class StackedDocumentInline(InlineDocumentAdmin):
     template = 'admin/edit_inline/stacked.html'
