@@ -12,40 +12,46 @@ This a drop in replacement for the django admin that works with monodb. It uses 
 
 Add mongoadmin to `INSTALLED_APPS` settings
 
-	INSTALLED_APPS = (
-		...
-    	'mongoadmin',
-    	'django.contrib.admin',
-		...
-	)
+```python
+INSTALLED_APPS = (
+	...
+   	'mongoadmin',
+   	'django.contrib.admin',
+	...
+)
+```
 
 Add mongoadmin to `urls.py`
 
-	from django.contrib import admin
-	admin.autodiscover()
+```python
+from django.contrib import admin
+admin.autodiscover()
 
-	from mongoadmin import site
+from mongoadmin import site
 
-	urlpatterns = patterns('',
-    	# Uncomment the next line to enable the admin:
-    	url(r'^admin/', include(site.urls)),
-	)
+urlpatterns = patterns('',
+   	# Uncomment the next line to enable the admin:
+   	url(r'^admin/', include(site.urls)),
+)
+```
 
 The `admin.py` for your app needs to use mongoadmin instead of django's admin:
 
-	from mongoadmin import site, DocumentAdmin
+```python
+from mongoadmin import site, DocumentAdmin
 
-	from app.models import AppDocument
+from app.models import AppDocument
 	
-	class AppDocumentAdmin(DocumentAdmin):
-	    pass
-	site.register(AppDocument, AppDocumentAdmin)
+class AppDocumentAdmin(DocumentAdmin):
+    pass
+site.register(AppDocument, AppDocumentAdmin)
+```
 	
 Now the document should appear as usual in django's admin.
 
 ### Using third party apps with mongoadmin
 
-To use third party apps (i.e. apps that register their admin classes in django.contrib.admin.site) with mongoadmin you have to add `MONGOADMIN_OVERRIDE_ADMIN = True` to your settings file. This overrides the django admin site with mongoadmin's admin site.
+To use third party apps (i.e. apps that register their admin classes in `django.contrib.admin.site`) with mongoadmin you have to add `MONGOADMIN_OVERRIDE_ADMIN = True` to your settings file. This overrides the django admin site with mongoadmin's admin site.
 
 ## What works and doesn't work
 
