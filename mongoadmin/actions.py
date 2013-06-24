@@ -8,7 +8,10 @@ from django.contrib.admin import helpers
 from django.contrib.admin.util import get_deleted_objects, model_ngettext
 from django.db import router
 from django.shortcuts import render_to_response
-from django.utils.encoding import force_unicode
+try:
+    from django.utils.encoding import force_text as force_unicode
+except ImportError:
+    from django.utils.encoding import force_unicode
 from django.utils.translation import ugettext_lazy, ugettext as _
 from django.db import models
 

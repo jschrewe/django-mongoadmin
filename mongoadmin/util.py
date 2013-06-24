@@ -1,4 +1,16 @@
-from django.utils.encoding import force_unicode, smart_unicode, smart_str
+from django.utils.encoding import smart_str
+try:
+    from django.utils.encoding import force_text as force_unicode
+except ImportError:
+    from django.utils.encoding import force_unicode
+try:
+    from django.utils.encoding import smart_text as smart_unicode
+except ImportError:
+    try:
+        from django.utils.encoding import smart_unicode
+    except ImportError:
+        from django.forms.util import smart_unicode
+    
 from django.forms.forms import pretty_name
 from django.db.models.fields import FieldDoesNotExist
 from django.utils import formats
@@ -8,6 +20,7 @@ from mongoengine import fields
 
 from mongodbforms.documentoptions import DocumentMetaWrapper
 from mongodbforms.util import init_document_options
+import collections
 
 class RelationWrapper(object):
     """
@@ -29,7 +42,7 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
         elif name == "__str__":
             label = smart_str(model._admin_opts.verbose_name)
         else:
-            if callable(name):
+            if isinstance(name, collections.Callable):
                 attr = name
             elif model_admin is not None and hasattr(model_admin, name):
                 attr = getattr(model_admin, name)
@@ -44,7 +57,7 @@ def label_for_field(name, model, model_admin=None, return_attr=False):
 
             if hasattr(attr, "short_description"):
                 label = attr.short_description
-            elif callable(attr):
+            elif isinstance(attr, collections.Callable):
                 if attr.__name__ == "<lambda>":
                     label = "--"
                 else:

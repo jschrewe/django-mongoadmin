@@ -141,7 +141,7 @@ class AdminSite(object):
         """
         Get all the enabled actions as an iterable of (name, func).
         """
-        return self._actions.iteritems()
+        return iter(self._actions.items())
 
     def has_permission(self, request):
         """
@@ -243,7 +243,7 @@ class AdminSite(object):
 
 
         # Add in each model's views.
-        for model, model_admin in self._registry.iteritems():
+        for model, model_admin in self._registry.items():
             # Try to read app_label and module_name from classes _meta attribute.
             # If they don't exist we try to add a mongo document. app_label and module_name
             # are then created here and added to the document's _meta.
@@ -355,7 +355,7 @@ class AdminSite(object):
         """
         app_dict = {}
         user = request.user
-        for model, model_admin in self._registry.items():
+        for model, model_admin in list(self._registry.items()):
             try:
                 app_label = model._meta.app_label
             except AttributeError:
@@ -367,7 +367,7 @@ class AdminSite(object):
 
                 # Check whether user has any perm for this module.
                 # If so, add the module to the model_list.
-                if True in perms.values():
+                if True in list(perms.values()):
                     try:
                         name = capfirst(model._meta.verbose_name_plural)
                     except AttributeError:
@@ -388,7 +388,7 @@ class AdminSite(object):
                         }
 
         # Sort the apps alphabetically.
-        app_list = app_dict.values()
+        app_list = list(app_dict.values())
         app_list.sort(key=lambda x: x['name'])
 
         # Sort the models alphabetically within each app.
@@ -410,7 +410,7 @@ class AdminSite(object):
         user = request.user
         has_module_perms = user.has_module_perms(app_label)
         app_dict = {}
-        for model, model_admin in self._registry.items():
+        for model, model_admin in list(self._registry.items()):
             try:
                 model_app_label = model._meta.app_label
             except AttributeError:
@@ -421,7 +421,7 @@ class AdminSite(object):
 
                     # Check whether user has any perm for this module.
                     # If so, add the module to the model_list.
-                    if True in perms.values():
+                    if True in list(perms.values()):
                         try:
                             name = capfirst(model._meta.verbose_name_plural)
                         except AttributeError:

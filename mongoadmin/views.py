@@ -8,6 +8,7 @@ from django.core.paginator import InvalidPage
 from django.utils.encoding import smart_str
 
 from mongoengine import Q
+from functools import reduce
 
 class DocumentChangeList(ChangeList):
     def __init__(self, request, model, list_display, list_display_links,
@@ -123,7 +124,7 @@ class DocumentChangeList(ChangeList):
         for i in (ALL_VAR, ORDER_VAR, ORDER_TYPE_VAR, SEARCH_VAR, IS_POPUP_VAR, TO_FIELD_VAR):
             if i in lookup_params:
                 del lookup_params[i]
-        for key, value in lookup_params.items():
+        for key, value in list(lookup_params.items()):
             if not isinstance(key, str):
                 # 'key' will be used as a keyword argument later, so Python
                 # requires it to be a string.
@@ -178,7 +179,7 @@ class DocumentChangeList(ChangeList):
             # Allow certain types of errors to be re-raised as-is so that the
             # caller can treat them in a special way.
             raise
-        except Exception, e:
+        except Exception as e:
             # Every other error is caught with a naked except, because we don't
             # have any other way of validating lookup parameters. They might be
             # invalid if the keyword arguments are incorrect, or if the values

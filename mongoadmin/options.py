@@ -11,6 +11,7 @@ from django.core.paginator import Paginator
 from django.db import models, transaction, router
 from django.db.models.related import RelatedObject
 from django.db.models.fields import BLANK_CHOICE_DASH, FieldDoesNotExist
+import collections
 try:
     from django.db.models.sql.constants import LOOKUP_SEP, QUERY_TERMS
 except ImportError:
@@ -27,7 +28,10 @@ from django.utils.functional import curry
 from django.utils.text import capfirst, get_text_list
 from django.utils.translation import ugettext as _
 from django.utils.translation import ungettext
-from django.utils.encoding import force_unicode
+try:
+    from django.utils.encoding import force_text as force_unicode
+except ImportError:
+    from django.utils.encoding import force_unicode
 from django.forms.forms import pretty_name
 
 from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, 
@@ -41,6 +45,7 @@ from mongodbforms.documents import (documentform_factory, DocumentForm, Embedded
                                   inlineformset_factory, BaseInlineDocumentFormSet, 
                                   embeddedformset_factory, EmbeddedDocumentFormSet)
 from mongodbforms import MongoDefaultFormFieldGenerator, save_instance
+from mongodbforms.util import with_metaclass
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -72,7 +77,7 @@ def formfield(field, form_class=None, **kwargs):
     """
     defaults = {'required': field.required, 'label': pretty_name(field.name)}
     if field.default is not None:
-        if callable(field.default):
+        if isinstance(field.default, collections.Callable):
             defaults['initial'] = field.default()
             defaults['show_hidden_initial'] = True 
         else:
@@ -85,7 +90,7 @@ def formfield(field, form_class=None, **kwargs):
         # Many of the subclass-specific formfield arguments (min_value,
         # max_value) don't apply for choice fields, so be sure to only pass
         # the values that TypedChoiceField will understand.
-        for k in kwargs.keys():
+        for k in list(kwargs.keys()):
             if k not in ('coerce', 'empty_value', 'choices', 'required',
                          'widget', 'label', 'initial', 'help_text',
                          'error_messages', 'show_hidden_initial'):
@@ -99,9 +104,8 @@ def formfield(field, form_class=None, **kwargs):
         return MongoDefaultFormFieldGenerator().generate(field, **defaults)
 
     
-class BaseDocumentAdmin(object):
+class BaseDocumentAdmin(with_metaclass(forms.MediaDefiningClass, object)):
     """Functionality common to both ModelAdmin and InlineAdmin."""
-    __metaclass__ = forms.MediaDefiningClass
 
     raw_id_fields = ()
     fields = None
@@ -238,7 +242,7 @@ class BaseDocumentAdmin(object):
         # ForeignKeyRawIdWidget, on the basis of ForeignKey.limit_choices_to,
         # are allowed to work.
         for l in model._meta.related_fkey_lookups:
-            for k, v in widgets.url_params_from_lookup_dict(l).items():
+            for k, v in list(widgets.url_params_from_lookup_dict(l).items()):
                 if k == lookup and v == value:
                     return True
 
@@ -355,7 +359,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         return ret[0]
 
     def get_inline_instances(self):
-        for f in self.document._fields.itervalues():
+        for f in self.document._fields.values():
             if not (isinstance(f, ListField) and isinstance(getattr(f, 'field', None), EmbeddedDocumentField)) and not isinstance(f, EmbeddedDocumentField):
                 continue
             # Should only reach here if there is an embedded document...
@@ -490,7 +494,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         if self.declared_fieldsets:
             return self.declared_fieldsets
         form = self.get_form(request, obj)
-        fields = form.base_fields.keys() + list(self.get_readonly_fields(request, obj))
+        fields = list(form.base_fields.keys()) + list(self.get_readonly_fields(request, obj))
         return [(None, {'fields': fields})]
 
     def get_form(self, request, obj=None, **kwargs):
@@ -525,7 +529,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         Returns the ChangeList class for use on the changelist page.
         """
-        from views import DocumentChangeList
+        from .views import DocumentChangeList
         return DocumentChangeList
 
     def get_object(self, request, object_id):
@@ -656,7 +660,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             actions.extend([self.get_action(action) for action in class_actions])
 
         # get_action might have returned None, so filter any of those out.
-        actions = filter(None, actions)
+        actions = [_f for _f in actions if _f]
 
         # Convert the actions into a SortedDict keyed by name
         # and sorted by description.
@@ -673,7 +677,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         tuple (name, description).
         """
         choices = [] + default_choices
-        for func, name, description in self.get_actions(request).itervalues():
+        for func, name, description in self.get_actions(request).values():
             choice = (name, description % model_format_dict(self.opts))
             choices.append(choice)
         return choices
@@ -685,7 +689,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         (callable, name, description).
         """
         # If the action is a callable, just use it.
-        if callable(action):
+        if isinstance(action, collections.Callable):
             func = action
             action = action.__name__
 
@@ -1028,7 +1032,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         else:
             # Prepare the dict of initial data from the request.
             # We have to special-case M2Ms as a list of comma-separated PKs.
-            initial = dict(request.GET.items())
+            initial = dict(list(request.GET.items()))
             for k in initial:
                 try:
                     f = opts.get_field(k)
@@ -1161,9 +1165,6 @@ class DocumentAdmin(BaseDocumentAdmin):
             form = DocumentForm(instance=obj)
             prefixes = {}
             # set the actual parent document on the inline admins
-            print "change view"
-            print type(self)
-            print zip(self.get_formsets(request, obj), self.inline_instances)
             for FormSet, inline in zip(self.get_formsets(request, obj), self.inline_instances):
                 inline.parent_document = obj
                 prefix = FormSet.get_default_prefix()
@@ -1245,7 +1246,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             # and the 'invalid=1' parameter was already in the query string,
             # something is screwed up with the database, so display an error
             # page.
-            if ERROR_FLAG in request.GET.keys():
+            if ERROR_FLAG in list(request.GET.keys()):
                 return render_to_response('admin/invalid_setup.html', {'title': _('Database error')})
             return HttpResponseRedirect(request.path + '?' + ERROR_FLAG + '=1')
         
@@ -1381,7 +1382,7 @@ class DocumentAdmin(BaseDocumentAdmin):
 
         # Populate deleted_objects, a data structure of all related objects that
         # will also be deleted.
-        print "FIXME: Need to delete nested objects."
+        print("FIXME: Need to delete nested objects.")
         #(deleted_objects, perms_needed, protected) = get_deleted_objects(
         #    [obj], opts, request.user, self.admin_site, using)
 
@@ -1439,7 +1440,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         from mongoengine.base import ValidationError
         try:
             obj = model.objects.get(id=object_id)
-        except ValidationError, e:
+        except ValidationError as e:
             raise Http404('No %s matches the given query.' % model._meta.object_name)
 
         context = {
@@ -1535,7 +1536,7 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
         if self.declared_fieldsets:
             return self.declared_fieldsets
         form = self.get_formset(request).form
-        fields = form.base_fields.keys() + list(self.get_readonly_fields(request, obj))
+        fields = list(form.base_fields.keys()) + list(self.get_readonly_fields(request, obj))
         return [(None, {'fields': fields})]
 
 class EmbeddedDocumentAdmin(InlineDocumentAdmin):
@@ -1598,7 +1599,6 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
             "fields": fields,
             "exclude": exclude,
             "formfield_callback": curry(self.formfield_for_dbfield, request=request),
-            "extra_attrs": {"embedded_field_name": self.field.name}
         }
         defaults.update(kwargs)
         document = self.document()
@@ -1632,7 +1632,9 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
             "can_delete": self.can_delete,
         }
         defaults.update(kwargs)
-        return embeddedformset_factory(self.document, self.parent_document, **defaults)
+        formset = embeddedformset_factory(self.document, self.parent_document, **defaults)
+        formset.form._meta.embedded_field = self.rel_name
+        return formset
 
 class StackedDocumentInline(InlineDocumentAdmin):
     template = 'admin/edit_inline/stacked.html'
