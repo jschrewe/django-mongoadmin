@@ -411,10 +411,7 @@ class AdminSite(object):
         has_module_perms = user.has_module_perms(app_label)
         app_dict = {}
         for model, model_admin in list(self._registry.items()):
-            try:
-                model_app_label = model._meta.app_label
-            except AttributeError:
-                model_app_label = model._admin_opts.app_label
+            model_app_label = model._meta.app_label
             if app_label == model_app_label:
                 if has_module_perms:
                     perms = model_admin.get_model_perms(request)
@@ -422,10 +419,7 @@ class AdminSite(object):
                     # Check whether user has any perm for this module.
                     # If so, add the module to the model_list.
                     if True in list(perms.values()):
-                        try:
-                            name = capfirst(model._meta.verbose_name_plural)
-                        except AttributeError:
-                            name = capfirst(model._admin_opts.verbose_name_plural)
+                        name = capfirst(model._meta.verbose_name_plural)
                         model_dict = {
                             'name': name,
                             'admin_url': '%s/' % model.__name__.lower(),

@@ -3,7 +3,7 @@ from django.contrib.admin.templatetags.admin_list import (result_hidden_fields, 
                                                           result_headers)
 from django.db.models.fields import FieldDoesNotExist
 
-from mongodbforms.util import patch_document
+from mongodbforms.documentoptions import patch_document
 
 register = Library()
 
@@ -19,7 +19,7 @@ def serializable_value(self, field_name):
     and not use this method.
     """
     try:
-        field = self._admin_opts.get_field_by_name(field_name)[0]
+        field = self._meta.get_field_by_name(field_name)[0]
     except FieldDoesNotExist:
         return getattr(self, field_name)
     return getattr(self, field.name) 
@@ -36,7 +36,6 @@ def results(cl):
     else:
         for res in cl.result_list:
             patch_document(serializable_value, res)
-            res._meta = res._admin_opts
             yield ResultList(None, items_for_result(cl, res, None))
 
 def document_result_list(cl):

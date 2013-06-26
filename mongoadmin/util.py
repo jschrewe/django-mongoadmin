@@ -32,15 +32,16 @@ class RelationWrapper(object):
 
 def label_for_field(name, model, model_admin=None, return_attr=False):
     attr = None
-    model._admin_opts = DocumentMetaWrapper(model)
+    if not isinstance(model, DocumentMetaWrapper):
+        model._meta = DocumentMetaWrapper(model)
     try:
-        field = model._admin_opts.get_field_by_name(name)[0]
+        field = model._meta.get_field_by_name(name)[0]
         label = field.name.replace('_', ' ')
     except FieldDoesNotExist: 
         if name == "__unicode__":
-            label = force_unicode(model._admin_opts.verbose_name)
+            label = force_unicode(model._meta.verbose_name)
         elif name == "__str__":
-            label = smart_str(model._admin_opts.verbose_name)
+            label = smart_str(model._meta.verbose_name)
         else:
             if isinstance(name, collections.Callable):
                 attr = name

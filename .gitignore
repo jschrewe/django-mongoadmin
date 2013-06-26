@@ -6,4 +6,6 @@ dist/*
 MANIFEST
 *egg*
 *.bak
+*.tmproj
+
 

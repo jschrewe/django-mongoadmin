@@ -322,10 +322,9 @@ class DocumentAdmin(BaseDocumentAdmin):
         
         self.model = document
         self.document = self.model
-        self.model._admin_opts = DocumentMetaWrapper(document)
-        self.model._meta = self.model._admin_opts 
+        self.document._meta = DocumentMetaWrapper(document)
         
-        self.opts = self.model._admin_opts
+        self.opts = self.document._meta
         
         self.admin_site = admin_site
         self.inline_instances = []
@@ -539,12 +538,13 @@ class DocumentAdmin(BaseDocumentAdmin):
         against the primary key field).
         """
         queryset = self.queryset(request)
-        model = queryset._document
-        model._admin_opts = DocumentMetaWrapper(model)
+        document = queryset._document
+        if not isinstance(document, DocumentMetaWrapper):
+            document._meta = DocumentMetaWrapper(document)
         try:
-            object_id = model._admin_opts.pk.to_python(object_id)
+            object_id = document._meta.pk.to_python(object_id)
             return queryset.get(pk=object_id)
-        except (model.DoesNotExist, ValidationError):
+        except (document.DoesNotExist, ValidationError):
             return None
 
     def get_changelist_form(self, request, **kwargs):
@@ -797,7 +797,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         return formset.save()
 
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
-        opts = self.model._admin_opts
+        opts = self.document._meta
         app_label = opts.app_label
         ordered_objects = opts.get_ordered_objects()
         context.update({
@@ -831,8 +831,8 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         Determines the HttpResponse for the add_view stage.
         """
-        opts = obj._admin_opts
-        pk_value = obj.pk.__str__()
+        opts = obj._meta
+        pk_value = str(obj.pk)
 
         msg = _('The %(name)s "%(obj)s" was added successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj)}
         # Here, we distinguish between different save types by checking for
@@ -866,7 +866,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         Determines the HttpResponse for the change_view stage.
         """
-        opts = obj._admin_opts
+        opts = obj._meta
 
         verbose_name = opts.verbose_name
         # Handle proxy models automatically created by .only() or .defer()
@@ -972,8 +972,8 @@ class DocumentAdmin(BaseDocumentAdmin):
     @transaction.commit_on_success
     def add_view(self, request, form_url='', extra_context=None):
         "The 'add' admin view for this model."
-        model = self.model
-        opts = model._admin_opts
+        model = self.document
+        opts = model._meta
 
         if not self.has_add_permission(request):
             raise PermissionDenied
@@ -1095,8 +1095,8 @@ class DocumentAdmin(BaseDocumentAdmin):
     @transaction.commit_on_success
     def change_view(self, request, object_id, extra_context=None):
         "The 'change' admin view for this model."
-        model = self.model
-        opts = model._admin_opts
+        model = self.document
+        opts = model._meta
 
         obj = self.get_object(request, unquote(object_id))
 
@@ -1367,7 +1367,7 @@ class DocumentAdmin(BaseDocumentAdmin):
     @transaction.commit_on_success
     def delete_view(self, request, object_id, extra_context=None):
         "The 'delete' admin view for this model."
-        opts = self.model._admin_opts
+        opts = self.document._meta
         app_label = opts.app_label
 
         obj = self.get_object(request, unquote(object_id))
@@ -1481,17 +1481,17 @@ class InlineDocumentAdmin(BaseDocumentAdmin):
 
     def __init__(self, admin_site):
         self.admin_site = admin_site
-        if not hasattr(self.document, '_admin_opts'):
-            self.document._admin_opts = DocumentMetaWrapper(self.document)
-        self.opts = self.document._admin_opts
+        if not isinstance(self.document._meta, DocumentMetaWrapper):
+            self.document._meta = DocumentMetaWrapper(self.document)
+        self.opts = self.document._meta
          
         super(InlineDocumentAdmin, self).__init__()
         
         if self.verbose_name is None:
-            self.verbose_name = self.document._admin_opts.verbose_name
+            self.verbose_name = self.document._meta.verbose_name
         
         if self.verbose_name_plural is None:
-            self.verbose_name_plural = self.document._admin_opts.verbose_name_plural
+            self.verbose_name_plural = self.document._meta.verbose_name_plural
 
     def _media(self):
         from django.conf import settings
@@ -1554,12 +1554,13 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
             self.doc_list = []
         self.rel_name = field.name
         
-        self.document._admin_opts = DocumentMetaWrapper(self.document)
+        if not isinstance(self.document._meta, DocumentMetaWrapper):
+            self.document._meta = DocumentMetaWrapper(self.document)
         if self.verbose_name is None:
-            self.verbose_name = "Field: %s (Document: %s)" % (capfirst(field.name), self.document._admin_opts.verbose_name)
+            self.verbose_name = "Field: %s (Document: %s)" % (capfirst(field.name), self.document._meta.verbose_name)
         
         if self.verbose_name_plural is None:
-            self.verbose_name_plural = "Field: %s (Document:  %s)" % (capfirst(field.name), self.document._admin_opts.verbose_name_plural)
+            self.verbose_name_plural = "Field: %s (Document:  %s)" % (capfirst(field.name), self.document._meta.verbose_name_plural)
         
         self.parent_document = parent_document
         
