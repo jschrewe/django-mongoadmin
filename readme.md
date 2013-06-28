@@ -57,5 +57,7 @@ To use third party apps (i.e. apps that register their admin classes in `django.
 
 django-mongoadmin currently only supports the most basic things and even they are not really tested.
 
+You probably won't be able to use all of the nice stuff Django provides for relations. The problem is that Django bi-directional relations with a lot of magic, while mongoengine has a uni-directional ReferenceField. So in order to make relations really work one would either have to inject so much code into the documents and querysets that they become clones of Django's stuff or rewrite huge parts of the admin. If you feel that either approach is worth it, go for it and submit a pull request. Otherwise feel free to submit an issue but don't get your hopes up for a fix.
+
 
 
