@@ -781,7 +781,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         Given a model instance save it to the database.
         """
-        save_instance(form, obj)
+        return save_instance(form=form, instance=obj)
         #obj.save()
 
     def delete_model(self, request, obj):
@@ -790,11 +790,11 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         obj.delete()
 
-    def save_formset(self, request, form, formset, change):
+    def save_formset(self, request, form, formset, change, commit=True):
         """
         Given an inline formset save it to the database.
         """
-        return formset.save()
+        return formset.save(commit=commit)
 
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
         opts = self.document._meta
@@ -1116,12 +1116,11 @@ class DocumentAdmin(BaseDocumentAdmin):
             form = DocumentForm(request.POST, request.FILES, instance=obj)
             if form.is_valid():
                 form_validated = True
-                new_object = self.save_form(request, form, change=True)
+                obj = self.save_form(request, form, change=True)
             else:
                 form_validated = False
-                new_object = obj
             prefixes = {}
-            for FormSet, inline in zip(self.get_formsets(request, new_object),
+            for FormSet, inline in zip(self.get_formsets(request, obj),
                                        self.inline_instances):
                 prefix = FormSet.get_default_prefix()
                 prefixes[prefix] = prefixes.get(prefix, 0) + 1
@@ -1139,27 +1138,31 @@ class DocumentAdmin(BaseDocumentAdmin):
                 else:
                     formset_args["instance"] = obj
                 formset = FormSet(**formset_args)
-
-                if formset.is_valid() and form_validated:
-                    if isinstance(inline, EmbeddedDocumentAdmin):
-                        embedded_object_list = formset.save()
-                        if isinstance(inline.field, ListField):
-                            setattr(new_object, inline.rel_name, embedded_object_list)
-                        elif len(embedded_object_list) > 0:
-                            setattr(new_object, inline.rel_name, embedded_object_list[0])
-                        else:
-                            setattr(new_object, inline.rel_name, None)
+                
+                if isinstance(inline, EmbeddedDocumentAdmin) and formset.is_valid() and form_validated:
+                    embedded_object_list = formset.save(commit=False)
+                    if isinstance(inline.field, ListField):
+                        setattr(obj, inline.rel_name, embedded_object_list)
+                    elif len(embedded_object_list) > 0:
+                        setattr(obj, inline.rel_name, embedded_object_list[0])
                     else:
-                        formset.save()
+                        setattr(obj, inline.rel_name, None)
+                            
+                    try:
+                        form._delete_before_save.remove(inline.rel_name)
+                    except (ValueError, AttributeError):
+                        pass
+                else:
+                    formsets.append(formset)
                         
             if all_valid(formsets) and form_validated:
-                self.save_model(request, new_object, form, change=True)
+                obj = self.save_model(request, obj, form, change=True)
                 for formset in formsets:
                     self.save_formset(request, form, formset, change=True)
 
                 change_message = self.construct_change_message(request, form, formsets)
-                self.log_change(request, new_object, change_message)
-                return self.response_change(request, new_object)
+                self.log_change(request, obj, change_message)
+                return self.response_change(request, obj)
 
         else:
             form = DocumentForm(instance=obj)
