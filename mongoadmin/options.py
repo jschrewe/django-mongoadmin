@@ -1,3 +1,5 @@
+import collections
+
 from django import forms, template
 from django.forms.formsets import all_valid
 from django.forms.models import modelformset_factory
@@ -11,7 +13,6 @@ from django.core.paginator import Paginator
 from django.db import models, transaction, router
 from django.db.models.related import RelatedObject
 from django.db.models.fields import BLANK_CHOICE_DASH, FieldDoesNotExist
-import collections
 try:
     from django.db.models.sql.constants import LOOKUP_SEP, QUERY_TERMS
 except ImportError:
@@ -874,7 +875,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         #    opts_ = opts.proxy_for_model._meta
         #    verbose_name = opts_.verbose_name
 
-        pk_value = obj.pk.__str__()
+        pk_value = str(obj.pk)
 
         msg = _('The %(name)s "%(obj)s" was changed successfully.') % {'name': force_unicode(verbose_name), 'obj': force_unicode(obj)}
         if "_continue" in request.POST:
@@ -1384,11 +1385,13 @@ class DocumentAdmin(BaseDocumentAdmin):
         if obj is None:
             raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
 
-        using = router.db_for_write(self.model)
-
         # Populate deleted_objects, a data structure of all related objects that
-        # will also be deleted.
-        print("FIXME: Need to delete nested objects.")
+        # will also be deleted.        
+        #
+        #
+        # FIXME: Need to delete nested objects.
+        #
+        #
         #(deleted_objects, perms_needed, protected) = get_deleted_objects(
         #    [obj], opts, request.user, self.admin_site, using)
 
@@ -1445,7 +1448,7 @@ class DocumentAdmin(BaseDocumentAdmin):
 
         from mongoengine.base import ValidationError
         try:
-            obj = model.objects.get(id=object_id)
+            obj = model.objects.get(pk=object_id)
         except ValidationError as e:
             raise Http404('No %s matches the given query.' % model._meta.object_name)
 
