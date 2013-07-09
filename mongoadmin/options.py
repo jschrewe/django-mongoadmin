@@ -1007,20 +1007,23 @@ class DocumentAdmin(BaseDocumentAdmin):
                 else:
                     formset_args["instance"] = new_object
                 formset = FormSet(**formset_args)
-                formsets.append(formset)
                 
-                if formset.is_valid() and form_validated:
-                    if isinstance(inline, EmbeddedDocumentAdmin):
-                        embedded_object_list = formset.save()
-                        if isinstance(inline.field, ListField):
-                            setattr(new_object, inline.rel_name, embedded_object_list)
-                        elif len(embedded_object_list) > 0:
-                            setattr(new_object, inline.rel_name, embedded_object_list[0])
-                        else:
-                            setattr(new_object, inline.rel_name, None)
+                if isinstance(inline, EmbeddedDocumentAdmin) and formset.is_valid() and form_validated:
+                    embedded_object_list = formset.save(commit=False)
+                    if isinstance(inline.field, ListField):
+                        setattr(new_object, inline.rel_name, embedded_object_list)
+                    elif len(embedded_object_list) > 0:
+                        setattr(new_object, inline.rel_name, embedded_object_list[0])
                     else:
-                        formset.save()
-                
+                        setattr(new_object, inline.rel_name, None)
+                            
+                    try:
+                        form._delete_before_save.remove(inline.rel_name)
+                    except (ValueError, AttributeError):
+                        pass
+                else:
+                    formsets.append(formset)
+                   
             if all_valid(formsets) and form_validated:
                 self.save_model(request, new_object, form, change=False)
                 for formset in formsets:
