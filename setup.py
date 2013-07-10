@@ -5,13 +5,13 @@ from subprocess import call
 
 def convert_readme():
     try:
-        call(["pandoc", "-t",  "rst", "-o",  "README.txt", "readme.md"])
+        call(["pandoc", "-f", "markdown_github", "-t",  "rst", "-o",  "README.txt", "readme.md"])
     except OSError:
         pass
     return open('README.txt').read()
 
 setup(name='mongoadmin',
-    version='0.1.4',
+    version='0.1.5',
     description="A replacement for django's admin that works with mongodb.",
     author='Jan Schrewe',
     author_email='jan@schafproductions.com',
