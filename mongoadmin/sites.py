@@ -18,7 +18,10 @@ from django.contrib.admin.sites import NotRegistered, AlreadyRegistered
 
 from mongoengine.base import TopLevelDocumentMetaclass
 
+from mongodbforms import init_document_options
+
 from mongoadmin import actions, DocumentAdmin
+from mongoadmin.util import is_django_user_model
 
 LOGIN_FORM_KEY = 'this_is_the_login_form'
 
@@ -65,6 +68,7 @@ class AdminSite(object):
         """
         if isinstance(model_or_iterable, ModelBase) and not admin_class:
             admin_class = ModelAdmin
+            
         if isinstance(model_or_iterable, TopLevelDocumentMetaclass) and not admin_class:
             admin_class = DocumentAdmin
 
@@ -79,12 +83,20 @@ class AdminSite(object):
             model_or_iterable = [model_or_iterable]
 
         for model in model_or_iterable:
+            if isinstance(model, TopLevelDocumentMetaclass):
+                init_document_options(model)
+            
             if hasattr(model._meta, 'abstract') and model._meta.abstract:
                 raise ImproperlyConfigured('The model %s is abstract, so it '
                       'cannot be registered with admin.' % model.__name__)
 
             if model in self._registry:
                 raise AlreadyRegistered('The model %s is already registered' % model.__name__)
+
+            # Ignore the registration if the model has been
+            # swapped out.
+            if model._meta.swapped:
+                continue
 
             # If we got **options then dynamically construct a subclass of
             # admin_class with those **options.
@@ -235,7 +247,8 @@ class AdminSite(object):
                 wrap(self.i18n_javascript, cacheable=True),
                 name='jsi18n'),
             url(r'^r/(?P<content_type_id>\d+)/(?P<object_id>.+)/$',
-                wrap(contenttype_views.shortcut)),
+                wrap(contenttype_views.shortcut),
+                name='view_on_site'),
             url(r'^(?P<app_label>\w+)/$',
                 wrap(self.app_index),
                 name='app_list')
@@ -402,7 +415,12 @@ class AdminSite(object):
         }
         context.update(extra_context or {})
         context_instance = template.RequestContext(request, current_app=self.name)
-        return render_to_response(self.index_template or 'admin/index.html', context,
+
+        if is_django_user_model(user):
+            default_template = 'admin/index.html'
+        else:
+            default_template = 'admin/mongo_user_index.html'
+        return render_to_response(self.index_template or default_template, context,
             context_instance=context_instance
         )
 

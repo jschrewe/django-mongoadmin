@@ -39,14 +39,13 @@ from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, Em
                                 ReferenceField, StringField, FileField, ImageField)
 
 from mongodbforms.documentoptions import DocumentMetaWrapper
-from mongoadmin import mongohelpers
-from mongoadmin.util import RelationWrapper
-
 from mongodbforms.documents import (documentform_factory, DocumentForm, EmbeddedDocumentForm,
                                   inlineformset_factory, BaseInlineDocumentFormSet, 
-                                  embeddedformset_factory, EmbeddedDocumentFormSet)
-from mongodbforms import MongoDefaultFormFieldGenerator, save_instance
-from mongodbforms.util import with_metaclass
+                                  embeddedformset_factory, EmbeddedDocumentFormSet, save_instance)
+from mongodbforms.util import with_metaclass, load_field_generator
+
+from mongoadmin import mongohelpers
+from mongoadmin.util import RelationWrapper, is_django_user_model
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -72,6 +71,9 @@ FORMFIELD_FOR_DBFIELD_DEFAULTS = {
 
 csrf_protect_m = method_decorator(csrf_protect)
 
+_fieldgenerator = load_field_generator()
+_fieldgenerator = _fieldgenerator()
+
 def formfield(field, form_class=None, **kwargs):
     """
     Returns a django.forms.Field instance for this database Field.
@@ -83,9 +85,6 @@ def formfield(field, form_class=None, **kwargs):
             defaults['show_hidden_initial'] = True 
         else:
             defaults['initial'] = field.default
-            
-    if hasattr(field, 'max_length') and field.choices is None:
-        defaults['max_length'] = field.max_length
             
     if field.choices is not None:
         # Many of the subclass-specific formfield arguments (min_value,
@@ -101,8 +100,7 @@ def formfield(field, form_class=None, **kwargs):
     
     if form_class is not None:
         return form_class(**defaults)
-    else:
-        return MongoDefaultFormFieldGenerator().generate(field, **defaults)
+    return _fieldgenerator.generate(field, **defaults)
 
     
 class BaseDocumentAdmin(with_metaclass(forms.MediaDefiningClass, object)):
@@ -133,7 +131,8 @@ class BaseDocumentAdmin(with_metaclass(forms.MediaDefiningClass, object)):
         # passed to formfield_for_dbfield override the defaults.
         for klass in db_field.__class__.mro():
             if klass in self.formfield_overrides:
-                kwargs = dict(self.formfield_overrides[klass], **kwargs)
+                kwargs.update(self.formfield_overrides[klass])
+                break
         return formfield(db_field, **kwargs)        
 
     def formfield_for_dbfield(self, db_field, **kwargs):
@@ -354,7 +353,7 @@ class DocumentAdmin(BaseDocumentAdmin):
     @property
     def content_type(self):
         name = app_label, model = self.opts.app_label, self.opts.module_name
-        name = '%s %s'%name
+        name = '%s %s' % name
         ret = ContentType.objects.get_or_create(name=name, app_label=app_label, model=model)
         return ret[0]
 
@@ -584,6 +583,9 @@ class DocumentAdmin(BaseDocumentAdmin):
 
         The default implementation creates an admin LogEntry object.
         """
+        if not is_django_user_model(request.user):
+            return
+            
         from django.contrib.admin.models import LogEntry, ADDITION
         LogEntry.objects.log_action(
             user_id         = request.user.pk,
@@ -599,6 +601,9 @@ class DocumentAdmin(BaseDocumentAdmin):
 
         The default implementation creates an admin LogEntry object.
         """
+        if not is_django_user_model(request.user):
+            return
+        
         from django.contrib.admin.models import LogEntry, CHANGE
         LogEntry.objects.log_action(
             user_id         = request.user.pk,
@@ -616,6 +621,9 @@ class DocumentAdmin(BaseDocumentAdmin):
 
         The default implementation creates an admin LogEntry object.
         """
+        if not is_django_user_model(request.user):
+            return
+        
         from django.contrib.admin.models import LogEntry, DELETION
         LogEntry.objects.log_action(
             user_id         = request.user.id,
@@ -812,7 +820,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             'ordered_objects': ordered_objects,
             'form_url': mark_safe(form_url),
             'opts': opts,
-            #'content_type_id': ContentType.objects.get_for_model(self.model).id,
+            'content_type_id': self.content_type.id,
             'save_as': self.save_as,
             'save_on_top': self.save_on_top,
             'root_path': self.admin_site.root_path,

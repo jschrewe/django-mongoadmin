@@ -29,11 +29,22 @@ class RelationWrapper(object):
     """
     def __init__(self, document):
         self.to = init_document_options(document)
+        
+def is_django_user_model(user):
+    """
+    Checks if a user model is compatible with Django's
+    recent changes. Django requires User models to have 
+    an int pk, so we check here if it has (mongoengine hasn't)
+    """
+    try:
+        int(user.pk)
+    except ValueError:
+        return False
+    return True
 
 def label_for_field(name, model, model_admin=None, return_attr=False):
     attr = None
-    if not isinstance(model, DocumentMetaWrapper):
-        model._meta = DocumentMetaWrapper(model)
+    model._meta = init_document_options(document)
     try:
         field = model._meta.get_field_by_name(name)[0]
         label = field.name.replace('_', ' ')
