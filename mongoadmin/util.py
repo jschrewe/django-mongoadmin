@@ -38,7 +38,7 @@ def is_django_user_model(user):
     """
     try:
         int(user.pk)
-    except ValueError:
+    except (ValueError, TypeError):
         return False
     return True
 

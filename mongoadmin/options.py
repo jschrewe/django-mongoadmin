@@ -3,7 +3,7 @@ import collections
 from django import forms, template
 from django.forms.formsets import all_valid
 from django.forms.models import modelformset_factory
-from django.contrib.contenttypes.models import ContentType
+from mongoadmin.contenttypes.models import ContentType
 from django.contrib.admin import widgets, helpers
 from django.contrib.admin.util import unquote, flatten_fieldsets, model_format_dict
 from django.contrib import messages
@@ -820,7 +820,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             'ordered_objects': ordered_objects,
             'form_url': mark_safe(form_url),
             'opts': opts,
-            'content_type_id': self.content_type.id,
+            'content_type_id': str(self.content_type.id),
             'save_as': self.save_as,
             'save_on_top': self.save_on_top,
             'root_path': self.admin_site.root_path,
@@ -833,7 +833,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         return render_to_response(form_template or [
             "admin/%s/%s/change_form.html" % (app_label, opts.object_name.lower()),
             "admin/%s/change_form.html" % app_label,
-            "admin/change_form.html"
+            "admin/mongo_change_form.html"
         ], context, context_instance=context_instance)
 
     def response_add(self, request, obj, post_url_continue='../%s/'):
@@ -1104,7 +1104,6 @@ class DocumentAdmin(BaseDocumentAdmin):
         return self.render_change_form(request, context, form_url=form_url, add=True)
 
     @csrf_protect_m
-    @transaction.commit_on_success
     def change_view(self, request, object_id, extra_context=None):
         "The 'change' admin view for this model."
         model = self.document
