@@ -46,7 +46,7 @@ from mongodbforms.util import with_metaclass, load_field_generator
 
 from mongoadmin import mongohelpers
 from mongoadmin.util import RelationWrapper, is_django_user_model
-from mongoadmin.widgets import ReferenceFieldRawIdWidget
+from mongoadmin.widgets import ReferenceRawIdWidget, MultiReferenceRawIdWidget
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -169,7 +169,7 @@ class BaseDocumentAdmin(with_metaclass(forms.MediaDefiningClass, object)):
                             can_add_related=can_add_related)
                 return form_field
             elif db_field.name in self.raw_id_fields:
-                kwargs['widget'] = ReferenceFieldRawIdWidget(db_field.rel, self.admin_site)
+                kwargs['widget'] = ReferenceRawIdWidget(db_field.rel, self.admin_site)
                 return self._get_formfield(db_field, **kwargs)
                 
         if isinstance(db_field, StringField):
@@ -208,7 +208,7 @@ class BaseDocumentAdmin(with_metaclass(forms.MediaDefiningClass, object)):
         db = kwargs.get('using')
 
         if db_field.name in self.raw_id_fields:
-            kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.rel, using=db)
+            kwargs['widget'] = MultiReferenceRawIdWidget(db_field.field.rel, self.admin_site)
             kwargs['help_text'] = ''
         elif db_field.name in (list(self.filter_vertical) + list(self.filter_horizontal)):
             kwargs['widget'] = widgets.FilteredSelectMultiple(pretty_name(db_field.name), (db_field.name in self.filter_vertical))

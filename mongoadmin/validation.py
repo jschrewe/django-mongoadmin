@@ -221,9 +221,12 @@ def validate_base(cls, model):
         check_isseq(cls, 'raw_id_fields', cls.raw_id_fields)
         for idx, field in enumerate(cls.raw_id_fields):
             f = get_field(cls, model, opts, 'raw_id_fields', field)
-            if not isinstance(f, (ReferenceField, models.ManyToManyField)):
+            print f
+            print 
+            if not (isinstance(f, ReferenceField) or \
+                    (isinstance(f, ListField) and isinstance(f.field, ReferenceField))):
                 raise ImproperlyConfigured("'%s.raw_id_fields[%d]', '%s' must "
-                        "be either a ForeignKey or ManyToManyField."
+                        "be either a ReferenceField or a ListField(ReferenceField())."
                         % (cls.__name__, idx, field))
 
     # fields
