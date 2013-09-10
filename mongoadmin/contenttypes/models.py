@@ -41,3 +41,14 @@ else:
     
     manager = ContentTypeManager()
     manager.contribute_to_class(ContentType, 'objects')
+    
+    try:
+        from grappelli.templatetags import grp_tags
+        grp_tags.ContentType = ContentType
+    except ImportError:
+        pass
+    
+    
+    
+    
+    

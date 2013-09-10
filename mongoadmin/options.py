@@ -46,6 +46,7 @@ from mongodbforms.util import with_metaclass, load_field_generator
 
 from mongoadmin import mongohelpers
 from mongoadmin.util import RelationWrapper, is_django_user_model
+from mongoadmin.widgets import ReferenceFieldRawIdWidget
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -167,7 +168,10 @@ class BaseDocumentAdmin(with_metaclass(forms.MediaDefiningClass, object)):
                             form_field.widget, RelationWrapper(db_field.document_type), self.admin_site,
                             can_add_related=can_add_related)
                 return form_field
-
+            elif db_field.name in self.raw_id_fields:
+                kwargs['widget'] = ReferenceFieldRawIdWidget(db_field.rel, self.admin_site)
+                return self._get_formfield(db_field, **kwargs)
+                
         if isinstance(db_field, StringField):
             if db_field.max_length is None:
                 kwargs = dict({'widget': widgets.AdminTextareaWidget}, **kwargs)
@@ -978,7 +982,6 @@ class DocumentAdmin(BaseDocumentAdmin):
         
 
     @csrf_protect_m
-    @transaction.commit_on_success
     def add_view(self, request, form_url='', extra_context=None):
         "The 'add' admin view for this model."
         model = self.document

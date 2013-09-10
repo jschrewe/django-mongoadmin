@@ -3,6 +3,7 @@ import sys
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model
+from django.db import DatabaseError
 
 from mongoengine.base.common import _document_registry
 
@@ -13,10 +14,14 @@ from mongoengine.base.common import _document_registry
 try:
     ContentType.objects.all()[0]
     HAS_RELATIONAL_DB = True
-    # This assumes you use django.db.backends.dummy for now.
-except (ImproperlyConfigured): 
+except ImproperlyConfigured:
+    # This assumes you use django.db.backends.dummy for now. 
     HAS_RELATIONAL_DB = False
-    
+except (DatabaseError, IndexError):
+    # Chances are high that a db has been configured if
+    # we get that exception. So we assume that a we have
+    # a relational db
+    HAS_RELATIONAL_DB = True
     
 def get_model_or_document(app_label, model):
     if HAS_RELATIONAL_DB:

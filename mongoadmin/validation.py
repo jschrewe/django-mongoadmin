@@ -6,11 +6,11 @@ from django.contrib.admin.util import get_fields_from_path, NotRelationField
 from django.contrib.admin.options import flatten_fieldsets, HORIZONTAL, VERTICAL
 from django.contrib.admin.validation import validate as django_validate
 
-from mongodbforms.documents import DocumentFormMetaclass, fields_for_document, BaseDocumentFormSet
-from mongodbforms.documentoptions import DocumentMetaWrapper
-
 from mongoengine.fields import ListField, EmbeddedDocumentField, ReferenceField
 from mongoengine.base import BaseDocument
+
+from mongodbforms.documents import DocumentFormMetaclass, fields_for_document, BaseDocumentFormSet
+from mongodbforms.documentoptions import DocumentMetaWrapper
 
 from .options import BaseDocumentAdmin, EmbeddedDocumentAdmin
 import collections
@@ -221,7 +221,7 @@ def validate_base(cls, model):
         check_isseq(cls, 'raw_id_fields', cls.raw_id_fields)
         for idx, field in enumerate(cls.raw_id_fields):
             f = get_field(cls, model, opts, 'raw_id_fields', field)
-            if not isinstance(f, (models.ForeignKey, models.ManyToManyField)):
+            if not isinstance(f, (ReferenceField, models.ManyToManyField)):
                 raise ImproperlyConfigured("'%s.raw_id_fields[%d]', '%s' must "
                         "be either a ForeignKey or ManyToManyField."
                         % (cls.__name__, idx, field))
