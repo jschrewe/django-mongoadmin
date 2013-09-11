@@ -6,6 +6,7 @@ from django.forms.models import modelformset_factory
 from mongoadmin.contenttypes.models import ContentType
 from django.contrib.admin import widgets, helpers
 from django.contrib.admin.util import unquote, flatten_fieldsets, model_format_dict
+from django.contrib.admin.widgets import ManyToManyRawIdWidget
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_protect
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -46,7 +47,7 @@ from mongodbforms.util import with_metaclass, load_field_generator
 
 from mongoadmin import mongohelpers
 from mongoadmin.util import RelationWrapper, is_django_user_model
-from mongoadmin.widgets import ReferenceRawIdWidget, MultiReferenceRawIdWidget
+from mongoadmin.widgets import ReferenceRawIdWidget
 
 HORIZONTAL, VERTICAL = 1, 2
 # returns the <ul> class for a given radio_admin field
@@ -208,7 +209,7 @@ class BaseDocumentAdmin(with_metaclass(forms.MediaDefiningClass, object)):
         db = kwargs.get('using')
 
         if db_field.name in self.raw_id_fields:
-            kwargs['widget'] = MultiReferenceRawIdWidget(db_field.field.rel, self.admin_site)
+            kwargs['widget'] = ManyToManyRawIdWidget(db_field.field.rel, self.admin_site)
             kwargs['help_text'] = ''
         elif db_field.name in (list(self.filter_vertical) + list(self.filter_horizontal)):
             kwargs['widget'] = widgets.FilteredSelectMultiple(pretty_name(db_field.name), (db_field.name in self.filter_vertical))
