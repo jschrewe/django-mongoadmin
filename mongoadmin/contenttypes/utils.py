@@ -1,5 +1,6 @@
 import sys
 
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model
@@ -11,16 +12,19 @@ from mongoengine.base.common import _document_registry
 # object from it, we simply export Django's stuff and are done.
 # Otherwise we roll our own (mostly) compatible version 
 # using mongoengine.
-try:
-    ContentType.objects.all()[0]
-    HAS_RELATIONAL_DB = True
-except ImproperlyConfigured:
-    # This assumes you use django.db.backends.dummy for now. 
-    HAS_RELATIONAL_DB = False
-except (DatabaseError, IndexError):
-    # Chances are high that a db has been configured if
-    # we get that exception. So we assume that a we have
-    # a relational db
+if getattr(settings, 'MONGOADMIN_CHECK_CONTENTTYPE', True):
+    try:
+        ContentType.objects.all()[0]
+        HAS_RELATIONAL_DB = True
+    except ImproperlyConfigured:
+        # This assumes you use django.db.backends.dummy for now. 
+        HAS_RELATIONAL_DB = False
+    except (DatabaseError, IndexError):
+        # Chances are high that a db has been configured if
+        # we get that exception. So we assume that a we have
+        # a relational db
+        HAS_RELATIONAL_DB = True
+else:
     HAS_RELATIONAL_DB = True
     
 def get_model_or_document(app_label, model):
