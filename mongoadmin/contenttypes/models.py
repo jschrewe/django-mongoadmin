@@ -1,6 +1,6 @@
-from .utils import HAS_RELATIONAL_DB, get_model_or_document
+from .utils import has_rel_db, get_model_or_document
 
-if HAS_RELATIONAL_DB:
+if has_rel_db():
     from django.contrib.contenttypes.models import ContentType, ContentTypeManager
 else:
     from django.contrib.contenttypes.models import ContentTypeManager as DjangoContentTypeManager

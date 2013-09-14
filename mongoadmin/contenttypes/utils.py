@@ -12,23 +12,18 @@ from mongoengine.base.common import _document_registry
 # object from it, we simply export Django's stuff and are done.
 # Otherwise we roll our own (mostly) compatible version 
 # using mongoengine.
-if getattr(settings, 'MONGOADMIN_CHECK_CONTENTTYPE', True):
-    try:
-        ContentType.objects.all()[0]
-        HAS_RELATIONAL_DB = True
-    except ImproperlyConfigured:
-        # This assumes you use django.db.backends.dummy for now. 
-        HAS_RELATIONAL_DB = False
-    except (DatabaseError, IndexError):
-        # Chances are high that a db has been configured if
-        # we get that exception. So we assume that a we have
-        # a relational db
-        HAS_RELATIONAL_DB = True
-else:
-    HAS_RELATIONAL_DB = True
+
+def has_rel_db():
+    if not getattr(settings, 'MONGOADMIN_CHECK_CONTENTTYPE', True):
+        return True
+    
+    engine = settings.DATABASES.get('default', {}).get('ENGINE', 'django.db.backends.dummy')
+    if engine.endswith('dummy'):
+        return False
+    return True
     
 def get_model_or_document(app_label, model):
-    if HAS_RELATIONAL_DB:
+    if has_rel_db():
         return get_model(app_label, model, only_installed=False)
     else:
         # mongoengine's document registry is case sensitive
