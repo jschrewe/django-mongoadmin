@@ -11,12 +11,17 @@ def convert_readme():
     return open('README.txt').read()
 
 setup(name='mongoadmin',
-    version='0.1.5',
+    version='0.2',
     description="A replacement for django's admin that works with mongodb.",
     author='Jan Schrewe',
     author_email='jan@schafproductions.com',
     url='http://www.schafproductions.com/projects/mongo-admin/',
-    packages=['mongoadmin', 'mongoadmin.templatetags', 'mongoadmin.contenttypes',],
+    packages=[
+        'mongoadmin', 
+        'mongoadmin.templatetags', 
+        'mongoadmin.contenttypes', 
+        'mongoadmin.auth',
+    ],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Web Environment',
