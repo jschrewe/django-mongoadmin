@@ -1,5 +1,11 @@
 from django.utils.translation import ugettext, ugettext_lazy as _
-from django.contrib.auth.admin import csrf_protect_m, sensitive_post_parameters_m
+from django.contrib.auth.admin import csrf_protect_m
+try:
+    from django.contrib.auth.admin import sensitive_post_parameters_m
+except ImportError:
+    from django.utils.decorators import method_decorator
+    from django.views.decorators.debug import sensitive_post_parameters
+    sensitive_post_parameters_m = method_decorator(sensitive_post_parameters())    
 from django.contrib.auth.forms import AdminPasswordChangeForm
 from django.http import Http404
 from django.contrib import admin
@@ -158,7 +164,7 @@ class MongoUserAdmin(DocumentAdmin):
         # button except in two scenarios:
         # * The user has pressed the 'Save and add another' button
         # * We are adding a user in a popup
-        if '_addanother' not in request.POST and IS_POPUP_VAR not in request.POST:
+        if '_addanother' not in request.POST and '_popup' not in request.POST:
             request.POST['_continue'] = 1
         return super(MongoUserAdmin, self).response_add(request, obj,
                                                    post_url_continue)

@@ -37,7 +37,7 @@ class UserCreationForm(DocumentForm):
         # but it sets a nicer error message than the ORM. See #13147.
         username = self.cleaned_data["username"]
         try:
-            User._default_manager.get(username=username)
+            User.objects.get(username=username)
         except User.DoesNotExist:
             return username
         raise forms.ValidationError(
@@ -57,10 +57,8 @@ class UserCreationForm(DocumentForm):
 
     def save(self, commit=True):
         user = super(UserCreationForm, self).save(commit=False)
-        user.set_password(self.cleaned_data["password1"])
-        if commit:
-            user.save()
-        return user
+        self.instance = user.set_password(self.cleaned_data["password1"])
+        return self.instance
         
         
 class UserChangeForm(DocumentForm):

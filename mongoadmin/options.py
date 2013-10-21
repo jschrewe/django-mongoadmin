@@ -31,10 +31,11 @@ from django.utils.text import capfirst, get_text_list
 from django.utils.translation import ugettext as _
 from django.utils.translation import ungettext
 try:
-    from django.utils.encoding import force_text as force_unicode
+    from django.utils.encoding import force_text
 except ImportError:
-    from django.utils.encoding import force_unicode
+    from django.utils.encoding import force_unicode as force_text
 from django.forms.forms import pretty_name
+from django.core.urlresolvers import reverse
 
 from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, 
                                 ReferenceField, StringField, FileField, ImageField)
@@ -596,7 +597,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             user_id         = request.user.pk,
             content_type_id = self.content_type.id,
             object_id       = object.pk,
-            object_repr     = force_unicode(object),
+            object_repr     = force_text(object),
             action_flag     = ADDITION
         )
 
@@ -614,7 +615,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             user_id         = request.user.pk,
             content_type_id = self.content_type.id,
             object_id       = object.pk,
-            object_repr     = force_unicode(object),
+            object_repr     = force_text(object),
             action_flag     = CHANGE,
             change_message  = message
         )
@@ -642,7 +643,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         A list_display column containing a checkbox widget.
         """
-        return helpers.checkbox.render(helpers.ACTION_CHECKBOX_NAME, force_unicode(obj.pk))
+        return helpers.checkbox.render(helpers.ACTION_CHECKBOX_NAME, force_text(obj.pk))
     action_checkbox.short_description = mark_safe('<input type="checkbox" id="action-toggle" />')
     action_checkbox.allow_tags = True
 
@@ -763,17 +764,17 @@ class DocumentAdmin(BaseDocumentAdmin):
             for formset in formsets:
                 for added_object in formset.new_objects:
                     change_message.append(_('Added %(name)s "%(object)s".')
-                                          % {'name': force_unicode(added_object._meta.verbose_name),
-                                             'object': force_unicode(added_object)})
+                                          % {'name': force_text(added_object._meta.verbose_name),
+                                             'object': force_text(added_object)})
                 for changed_object, changed_fields in formset.changed_objects:
                     change_message.append(_('Changed %(list)s for %(name)s "%(object)s".')
                                           % {'list': get_text_list(changed_fields, _('and')),
-                                             'name': force_unicode(changed_object._meta.verbose_name),
-                                             'object': force_unicode(changed_object)})
+                                             'name': force_text(changed_object._meta.verbose_name),
+                                             'object': force_text(changed_object)})
                 for deleted_object in formset.deleted_objects:
                     change_message.append(_('Deleted %(name)s "%(object)s".')
-                                          % {'name': force_unicode(deleted_object._meta.verbose_name),
-                                             'object': force_unicode(deleted_object)})
+                                          % {'name': force_text(deleted_object._meta.verbose_name),
+                                             'object': force_text(deleted_object)})
         change_message = ' '.join(change_message)
         return change_message or _('No fields changed.')
 
@@ -795,7 +796,7 @@ class DocumentAdmin(BaseDocumentAdmin):
         """
         Given a model instance save it to the database.
         """
-        return save_instance(form=form, instance=obj)
+        return save_instance(form=form, instance=obj, construct=False)
         #obj.save()
 
     def delete_model(self, request, obj):
@@ -840,79 +841,118 @@ class DocumentAdmin(BaseDocumentAdmin):
             "admin/%s/change_form.html" % app_label,
             "admin/mongo_change_form.html"
         ], context, context_instance=context_instance)
-
-    def response_add(self, request, obj, post_url_continue='../%s/'):
+        
+        
+    def response_add(self, request, obj, post_url_continue=None):
         """
         Determines the HttpResponse for the add_view stage.
         """
         opts = obj._meta
-        pk_value = str(obj.pk)
+        pk_value = force_text(obj.pk)
 
-        msg = _('The %(name)s "%(obj)s" was added successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj)}
+        msg_dict = {'name': force_text(opts.verbose_name), 'obj': force_text(obj)}
         # Here, we distinguish between different save types by checking for
         # the presence of keys in request.POST.
         if "_continue" in request.POST:
-            self.message_user(request, msg + ' ' + _("You may edit it again below."))
+            msg = _('The %(name)s "%(obj)s" was added successfully. You may edit it again below.') % msg_dict
+            self.message_user(request, msg)
+            if post_url_continue is None:
+                post_url_continue = reverse('admin:%s_%s_change' %
+                                            (opts.app_label, opts.module_name),
+                                            args=(pk_value,),
+                                            current_app=self.admin_site.name)
+            else:
+                try:
+                    post_url_continue = post_url_continue % pk_value
+                    warnings.warn(
+                        "The use of string formats for post_url_continue "
+                        "in ModelAdmin.response_add() is deprecated. Provide "
+                        "a pre-formatted url instead.",
+                        DeprecationWarning, stacklevel=2)
+                except TypeError:
+                    pass
             if "_popup" in request.POST:
                 post_url_continue += "?_popup=1"
-            return HttpResponseRedirect(post_url_continue % pk_value)
+            return HttpResponseRedirect(post_url_continue)
 
         if "_popup" in request.POST:
-            return HttpResponse('<script type="text/javascript">opener.dismissAddAnotherPopup(window, "%s", "%s");</script>' % \
-                # escape() calls force_unicode.
+            return HttpResponse(
+                '<!DOCTYPE html><html><head><title></title></head><body>'
+                '<script type="text/javascript">opener.dismissAddAnotherPopup(window, "%s", "%s");</script></body></html>' % \
+                # escape() calls force_text.
                 (escape(pk_value), escapejs(obj)))
         elif "_addanother" in request.POST:
-            self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(opts.verbose_name)))
+            msg = _('The %(name)s "%(obj)s" was added successfully. You may add another %(name)s below.') % msg_dict
+            self.message_user(request, msg)
             return HttpResponseRedirect(request.path)
         else:
+            msg = _('The %(name)s "%(obj)s" was added successfully.') % msg_dict
             self.message_user(request, msg)
-
-            # Figure out where to redirect. If the user has change permission,
-            # redirect to the change-list page for this object. Otherwise,
-            # redirect to the admin index.
-            if self.has_change_permission(request, None):
-                post_url = '../'
-            else:
-                post_url = '../../../'
-            return HttpResponseRedirect(post_url)
+            return self.response_post_save_add(request, obj)
 
     def response_change(self, request, obj):
         """
         Determines the HttpResponse for the change_view stage.
         """
-        opts = obj._meta
+        opts = self.model._meta
 
-        verbose_name = opts.verbose_name
-        # Handle proxy models automatically created by .only() or .defer()
-        #if obj._deferred:
-        #    opts_ = opts.proxy_for_model._meta
-        #    verbose_name = opts_.verbose_name
+        pk_value = force_text(obj.pk)
 
-        pk_value = str(obj.pk)
-
-        msg = _('The %(name)s "%(obj)s" was changed successfully.') % {'name': force_unicode(verbose_name), 'obj': force_unicode(obj)}
+        msg_dict = {'name': force_text(opts.verbose_name), 'obj': force_text(obj)}
         if "_continue" in request.POST:
-            self.message_user(request, msg + ' ' + _("You may edit it again below."))
+            msg = _('The %(name)s "%(obj)s" was changed successfully. You may edit it again below.') % msg_dict
+            self.message_user(request, msg)
             if "_popup" in request.REQUEST:
                 return HttpResponseRedirect(request.path + "?_popup=1")
             else:
                 return HttpResponseRedirect(request.path)
         elif "_saveasnew" in request.POST:
-            msg = _('The %(name)s "%(obj)s" was added successfully. You may edit it again below.') % {'name': force_unicode(verbose_name), 'obj': obj}
+            msg = _('The %(name)s "%(obj)s" was added successfully. You may edit it again below.') % msg_dict
             self.message_user(request, msg)
-            return HttpResponseRedirect("../%s/" % pk_value)
+            return HttpResponseRedirect(reverse('admin:%s_%s_change' %
+                                        (opts.app_label, opts.module_name),
+                                        args=(pk_value,),
+                                        current_app=self.admin_site.name))
         elif "_addanother" in request.POST:
-            self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(verbose_name)))
-            return HttpResponseRedirect("../add/")
-        else:
+            msg = _('The %(name)s "%(obj)s" was changed successfully. You may add another %(name)s below.') % msg_dict
             self.message_user(request, msg)
-            # Figure out where to redirect. If the user has change permission,
-            # redirect to the change-list page for this object. Otherwise,
-            # redirect to the admin index.
-            if self.has_change_permission(request, None):
-                return HttpResponseRedirect('../')
-            else:
-                return HttpResponseRedirect('../../../')
+            return HttpResponseRedirect(reverse('admin:%s_%s_add' %
+                                        (opts.app_label, opts.module_name),
+                                        current_app=self.admin_site.name))
+        else:
+            msg = _('The %(name)s "%(obj)s" was changed successfully.') % msg_dict
+            self.message_user(request, msg)
+            return self.response_post_save_change(request, obj)
+            
+    def response_post_save_add(self, request, obj):
+        """
+        Figure out where to redirect after the 'Save' button has been pressed
+        when adding a new object.
+        """
+        opts = self.model._meta
+        if self.has_change_permission(request, None):
+            post_url = reverse('admin:%s_%s_changelist' %
+                               (opts.app_label, opts.module_name),
+                               current_app=self.admin_site.name)
+        else:
+            post_url = reverse('admin:index',
+                               current_app=self.admin_site.name)
+        return HttpResponseRedirect(post_url)
+
+    def response_post_save_change(self, request, obj):
+        """
+        Figure out where to redirect after the 'Save' button has been pressed
+        when editing an existing object.
+        """
+        opts = self.model._meta
+        if self.has_change_permission(request, None):
+            post_url = reverse('admin:%s_%s_changelist' %
+                               (opts.app_label, opts.module_name),
+                               current_app=self.admin_site.name)
+        else:
+            post_url = reverse('admin:index',
+                               current_app=self.admin_site.name)
+        return HttpResponseRedirect(post_url)
 
     def response_action(self, request, queryset):
         """
@@ -1094,7 +1134,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             media = media + inline_admin_formset.media
 
         context = {
-            'title': _('Add %s') % force_unicode(opts.verbose_name),
+            'title': _('Add %s') % force_text(opts.verbose_name),
             'adminform': adminForm,
             'is_popup': "_popup" in request.REQUEST,
             'show_delete': False,
@@ -1119,7 +1159,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             raise PermissionDenied
 
         if obj is None:
-            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
+            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_text(opts.verbose_name), 'key': escape(object_id)})
 
         if request.method == 'POST' and "_saveasnew" in request.POST:
             return self.add_view(request, form_url='../add/')
@@ -1218,7 +1258,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             media = media + inline_admin_formset.media
 
         context = {
-            'title': _('Change %s') % force_unicode(opts.verbose_name),
+            'title': _('Change %s') % force_text(opts.verbose_name),
             'adminform': adminForm,
             'object_id': object_id,
             'original': obj,
@@ -1324,14 +1364,14 @@ class DocumentAdmin(BaseDocumentAdmin):
 
                 if changecount:
                     if changecount == 1:
-                        name = force_unicode(opts.verbose_name)
+                        name = force_text(opts.verbose_name)
                     else:
-                        name = force_unicode(opts.verbose_name_plural)
+                        name = force_text(opts.verbose_name_plural)
                     msg = ungettext("%(count)s %(name)s was changed successfully.",
                                     "%(count)s %(name)s were changed successfully.",
                                     changecount) % {'count': changecount,
                                                     'name': name,
-                                                    'obj': force_unicode(obj)}
+                                                    'obj': force_text(obj)}
                     self.message_user(request, msg)
 
                 return HttpResponseRedirect(request.get_full_path())
@@ -1358,7 +1398,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             'All %(total_count)s selected', cl.result_count)
 
         context = {
-            'module_name': force_unicode(opts.verbose_name_plural),
+            'module_name': force_text(opts.verbose_name_plural),
             'selection_note': _('0 of %(cnt)s selected') % {'cnt': len(cl.result_list)},
             'selection_note_all': selection_note_all % {'total_count': cl.result_count},
             'title': cl.title,
@@ -1394,7 +1434,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             raise PermissionDenied
 
         if obj is None:
-            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
+            raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_text(opts.verbose_name), 'key': escape(object_id)})
 
         # Populate deleted_objects, a data structure of all related objects that
         # will also be deleted.        
@@ -1409,17 +1449,17 @@ class DocumentAdmin(BaseDocumentAdmin):
         if request.POST: # The user has already confirmed the deletion.
             #if perms_needed:
             #    raise PermissionDenied
-            obj_display = force_unicode(obj)
+            obj_display = force_text(obj)
             self.log_deletion(request, obj, obj_display)
             self.delete_model(request, obj)
 
-            self.message_user(request, _('The %(name)s "%(obj)s" was deleted successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj_display)})
+            self.message_user(request, _('The %(name)s "%(obj)s" was deleted successfully.') % {'name': force_text(opts.verbose_name), 'obj': force_text(obj_display)})
 
             if not self.has_change_permission(request, None):
                 return HttpResponseRedirect("../../../../")
             return HttpResponseRedirect("../../")
 
-        object_name = force_unicode(opts.verbose_name)
+        object_name = force_text(opts.verbose_name)
 
         #if perms_needed or protected:
         #    title = _("Cannot delete %(name)s") % {"name": object_name}
@@ -1464,9 +1504,9 @@ class DocumentAdmin(BaseDocumentAdmin):
             raise Http404('No %s matches the given query.' % model._meta.object_name)
 
         context = {
-            'title': _('Change history: %s') % force_unicode(obj),
+            'title': _('Change history: %s') % force_text(obj),
             'action_list': action_list,
-            'module_name': capfirst(force_unicode(opts.verbose_name_plural)),
+            'module_name': capfirst(force_text(opts.verbose_name_plural)),
             'object': obj,
             'root_path': self.admin_site.root_path,
             'app_label': app_label,
