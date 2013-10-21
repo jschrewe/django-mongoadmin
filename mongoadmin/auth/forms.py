@@ -88,3 +88,9 @@ class UserChangeForm(DocumentForm):
         # This is done here, rather than on the field, because the
         # field does not have access to the initial value
         return self.initial["password"]
+        
+    def clean_email(self):
+        email = self.cleaned_data.get("email")
+        if email == '':
+            return None
+        return email

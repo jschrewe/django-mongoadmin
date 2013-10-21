@@ -7,12 +7,13 @@ except ImportError:
     from django.views.decorators.debug import sensitive_post_parameters
     sensitive_post_parameters_m = method_decorator(sensitive_post_parameters())    
 from django.contrib.auth.forms import AdminPasswordChangeForm
-from django.http import Http404
+from django.http import HttpResponseRedirect, Http404
 from django.contrib import admin
 from django.utils.html import escape
 from django.template.response import TemplateResponse
 from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib import messages
 
 from mongoengine.django.auth import User
 from mongoengine import DoesNotExist
