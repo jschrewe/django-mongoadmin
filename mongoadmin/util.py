@@ -37,7 +37,10 @@ def is_django_user_model(user):
     an int pk, so we check here if it has (mongoengine hasn't)
     """
     try:
-        int(user.pk)
+        if hasattr(user, 'pk'):
+            int(user.pk)
+        else:
+            int(user)
     except (ValueError, TypeError):
         return False
     return True

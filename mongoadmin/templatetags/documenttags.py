@@ -57,3 +57,5 @@ def document_result_list(cl):
             'num_sorted_fields': num_sorted_fields,
             'results': list(results(cl))}
 result_list = register.inclusion_tag("admin/change_list_results.html")(document_result_list)
+
+

@@ -1,3 +1,5 @@
+from functools import update_wrapper
+
 from django import http, template
 from django.contrib.admin import ModelAdmin
 from django.contrib.admin.forms import AdminAuthenticationForm
@@ -7,7 +9,6 @@ from django.db.models.base import ModelBase
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from django.shortcuts import render_to_response
-from django.utils.functional import update_wrapper
 from django.utils.safestring import mark_safe
 from django.utils.text import capfirst
 from django.utils.translation import ugettext as _
@@ -416,10 +417,8 @@ class AdminSite(object):
         context.update(extra_context or {})
         context_instance = template.RequestContext(request, current_app=self.name)
 
-        if is_django_user_model(user):
-            default_template = 'admin/index.html'
-        else:
-            default_template = 'admin/mongo_user_index.html'
+        default_template = 'admin/index.html'
+        
         return render_to_response(self.index_template or default_template, context,
             context_instance=context_instance
         )
