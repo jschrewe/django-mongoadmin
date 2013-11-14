@@ -398,7 +398,7 @@ class DocumentAdmin(BaseDocumentAdmin):
             self.inline_instances.append(inline_instance)
 
     def get_urls(self):
-        from django.conf.urls.defaults import patterns, url
+        from django.conf.urls import patterns, url
 
         def wrap(view):
             def wrapper(*args, **kwargs):
