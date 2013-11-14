@@ -1691,10 +1691,10 @@ class EmbeddedDocumentAdmin(InlineDocumentAdmin):
             "extra": self.extra,
             "max_num": self.max_num,
             "can_delete": self.can_delete,
+            "embedded_name": self.rel_name
         }
         defaults.update(kwargs)
         formset = embeddedformset_factory(self.document, self.parent_document, **defaults)
-        formset.form._meta.embedded_field = self.rel_name
         return formset
 
 class StackedDocumentInline(InlineDocumentAdmin):

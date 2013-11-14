@@ -7,5 +7,7 @@ MANIFEST
 *egg*
 *.bak
 *.tmproj
+.tm_properties
+
 
 
