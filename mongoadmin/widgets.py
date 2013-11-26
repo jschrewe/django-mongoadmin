@@ -2,6 +2,8 @@ from django.contrib.admin.widgets import ForeignKeyRawIdWidget, ManyToManyRawIdW
 from django.utils.html import escape
 from django.utils.text import Truncator
 
+from bson.dbref import DBRef
+
 class ReferenceRawIdWidget(ForeignKeyRawIdWidget):
     """
     A Widget for displaying ReferenceFields in the "raw_id" interface rather than
@@ -12,6 +14,8 @@ class ReferenceRawIdWidget(ForeignKeyRawIdWidget):
             attrs = {}
         if 'style' not in attrs:
             attrs['style'] = 'width:30em;'
+        if isinstance(value, DBRef):
+            value = value.id
         return super(ReferenceRawIdWidget, self).render(name=name, value=value, attrs=attrs)
     
     def url_parameters(self):
@@ -24,6 +28,8 @@ class ReferenceRawIdWidget(ForeignKeyRawIdWidget):
 
     def label_for_value(self, value):
         #key = self.rel.get_related_field().name
+        if isinstance(value, DBRef):
+            value = value.id
         try:
             obj = self.rel.to.objects().get(**{'pk': value})
             return '&nbsp;<strong>%s</strong>' % escape(Truncator(obj).words(14, truncate='...'))
