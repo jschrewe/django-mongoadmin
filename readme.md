@@ -2,7 +2,7 @@
 
 This a drop in replacement for the django admin that works with monodb. It uses the django admin stuff wherever possible and can be used together with normal django models and a SQL database.
 
-__Note:__ The master branch requires Django 1.6. For older Django versions you can use the (pre-django-1.6)[https://github.com/jschrewe/django-mongoadmin/tree/pre-django-1.6] branch.
+__Note:__ The master branch requires Django 1.6. For older Django versions you can use the [pre-django-1.6](https://github.com/jschrewe/django-mongoadmin/tree/pre-django-1.6) branch.
 
 ## Requirements
 
