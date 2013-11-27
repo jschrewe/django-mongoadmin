@@ -1,4 +1,5 @@
 import django.contrib.admin.templatetags.log
+from django.contrib.admin.models import LogEntry
 
 from mongoadmin.util import is_django_user_model
 

@@ -14,11 +14,9 @@ except ImportError:
 from django.forms.forms import pretty_name
 from django.db.models.fields import FieldDoesNotExist
 from django.utils import formats
-from django.db.models.options import get_verbose_name
 
 from mongoengine import fields
 
-from mongodbforms.documentoptions import DocumentMetaWrapper
 from mongodbforms.util import init_document_options
 import collections
 
@@ -47,7 +45,7 @@ def is_django_user_model(user):
 
 def label_for_field(name, model, model_admin=None, return_attr=False):
     attr = None
-    model._meta = init_document_options(document)
+    model._meta = init_document_options(model)
     try:
         field = model._meta.get_field_by_name(name)[0]
         label = field.name.replace('_', ' ')

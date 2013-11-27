@@ -1,18 +1,6 @@
-from functools import update_wrapper
-
-from django import http, template
 from django.contrib.admin import ModelAdmin
-from django.contrib.admin.forms import AdminAuthenticationForm
-from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.views.decorators.csrf import csrf_protect
 from django.db.models.base import ModelBase
 from django.core.exceptions import ImproperlyConfigured
-from django.core.urlresolvers import reverse
-from django.shortcuts import render_to_response
-from django.utils.safestring import mark_safe
-from django.utils.text import capfirst
-from django.utils.translation import ugettext as _
-from django.views.decorators.cache import never_cache
 from django.conf import settings
 from django.contrib.admin.sites import AdminSite, NotRegistered, AlreadyRegistered
 
@@ -20,9 +8,7 @@ from mongoengine.base import TopLevelDocumentMetaclass
 
 from mongodbforms import init_document_options
 
-from mongoadmin import actions, DocumentAdmin
-from mongoadmin.util import is_django_user_model
-from mongoadmin.contenttypes import views as contenttype_views
+from mongoadmin import DocumentAdmin
 
 LOGIN_FORM_KEY = 'this_is_the_login_form'
 

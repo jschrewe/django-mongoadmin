@@ -1,13 +1,16 @@
 import collections
-from functools import update_wrapper, partial
+from functools import partial
 
 from django import forms
 from django.forms.models import modelform_defines_fields
-from django.contrib.admin.options import ModelAdmin, InlineModelAdmin
+from django.contrib.admin.options import ModelAdmin, InlineModelAdmin, get_ul_class
 from django.contrib.admin import widgets
 from django.contrib.admin.util import flatten_fieldsets
-from django.core.exceptions import FieldError
+from django.core.exceptions import FieldError, ValidationError
 from django.forms.formsets import DELETION_FIELD_NAME
+from django.utils.translation import ugettext as _
+from django.contrib.admin.util import NestedObjects
+from django.utils.text import get_text_list
 
 from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, 
                                 ReferenceField, StringField, FileField, ImageField)
@@ -142,13 +145,11 @@ class MongoFormFieldMixin(object):
         """
         Get a form Field for a ManyToManyField.
         """
-        db = kwargs.get('using')
-
         if db_field.name in self.raw_id_fields:
             kwargs['widget'] = MultiReferenceRawIdWidget(db_field.field.rel, self.admin_site)
             kwargs['help_text'] = ''
         elif db_field.name in (list(self.filter_vertical) + list(self.filter_horizontal)):
-            kwargs['widget'] = widgets.FilteredSelectMultiple(pretty_name(db_field.name), (db_field.name in self.filter_vertical))
+            kwargs['widget'] = widgets.FilteredSelectMultiple(forms.forms.pretty_name(db_field.name), (db_field.name in self.filter_vertical))
 
         return formfield(db_field, **kwargs)
         
@@ -377,8 +378,7 @@ class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
                 just using a generic "deletion_field" of the InlineModelAdmin.
                 """
                 if self.cleaned_data.get(DELETION_FIELD_NAME, False):
-                    using = router.db_for_write(self._meta.model)
-                    collector = NestedObjects(using=using)
+                    collector = NestedObjects()
                     collector.collect([self.instance])
                     if collector.protected:
                         objs = []

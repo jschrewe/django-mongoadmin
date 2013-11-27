@@ -1,10 +1,7 @@
 import sys
 
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model
-from django.db import DatabaseError
 
 from mongoengine.base.common import _document_registry
 
@@ -36,7 +33,7 @@ def get_model_or_document(app_label, model):
         if len(possible_docs) > 1:
             for doc in possible_docs:
                 module = sys.modules[doc.__module__]
-                doc_app_label = model_module.__name__.split('.')[-2]
+                doc_app_label = module.__name__.split('.')[-2]
                 if doc_app_label.lower() == app_label.lower():
                     return doc
         return None

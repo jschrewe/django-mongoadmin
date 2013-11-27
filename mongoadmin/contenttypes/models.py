@@ -7,7 +7,6 @@ else:
     
     from mongoengine.queryset import QuerySet
     from mongoengine.django.auth import ContentType
-    from mongoengine.base import get_document
     
     from mongodbforms import init_document_options
     from mongodbforms.documentoptions import patch_document

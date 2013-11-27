@@ -14,12 +14,11 @@ from django.template.response import TemplateResponse
 from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 
 from mongoengine.django.auth import User
 from mongoengine import DoesNotExist
 from mongoengine.django.mongo_auth.models import MongoUser
-
-from mongodbforms.util import init_document_options
 
 from mongoadmin import site, DocumentAdmin
 
@@ -53,7 +52,7 @@ class MongoUserAdmin(DocumentAdmin):
         qs = self.queryset(request)
         try:
             user = qs.filter(pk=id)[0]
-        except IndexError, DoesNotExist:
+        except (IndexError, DoesNotExist):
             raise Http404
         return user
 
