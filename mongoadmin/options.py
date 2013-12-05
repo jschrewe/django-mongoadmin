@@ -302,6 +302,18 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         for formset in formsets:
             self.save_formset(request, form, formset, change=change)
             
+    def log_addition(self, request, object):
+        """
+        Log that an object has been successfully added.
+
+        The default implementation creates an admin LogEntry object.
+        """
+        if not is_django_user_model(request.user):
+            return
+            
+        super(DocumentAdmin, self).log_addition(request=request, object=object)
+            
+            
     def log_change(self, request, object, message):
         """
         Log that an object has been successfully changed.
