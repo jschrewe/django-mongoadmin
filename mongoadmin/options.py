@@ -12,9 +12,9 @@ from django.utils.translation import ugettext as _
 from django.contrib.admin.util import NestedObjects
 from django.utils.text import get_text_list
 
-from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField, 
+from mongoengine.fields import (DateTimeField, URLField, IntField, ListField, EmbeddedDocumentField,
                                 ReferenceField, StringField, FileField, ImageField)
-                                
+
 from mongodbforms.documents import documentform_factory, embeddedformset_factory, DocumentForm, EmbeddedDocumentFormSet, EmbeddedDocumentForm
 from mongodbforms.util import load_field_generator, init_document_options
 
@@ -44,10 +44,10 @@ def formfield(field, form_class=None, **kwargs):
     if field.default is not None:
         if isinstance(field.default, collections.Callable):
             defaults['initial'] = field.default()
-            defaults['show_hidden_initial'] = True 
+            defaults['show_hidden_initial'] = True
         else:
             defaults['initial'] = field.default
-            
+
     if field.choices is not None:
         # Many of the subclass-specific formfield arguments (min_value,
         # max_value) don't apply for choice fields, so be sure to only pass
@@ -57,14 +57,14 @@ def formfield(field, form_class=None, **kwargs):
                          'widget', 'label', 'initial', 'help_text',
                          'error_messages', 'show_hidden_initial'):
                 del kwargs[k]
-                
+
     defaults.update(kwargs)
-    
+
     if form_class is not None:
         return form_class(**defaults)
     return _fieldgenerator.generate(field, **defaults)
-    
-    
+
+
 class MongoFormFieldMixin(object):
     def formfield_for_dbfield(self, db_field, **kwargs):
         """
@@ -79,7 +79,7 @@ class MongoFormFieldMixin(object):
         # admin widgets - we just need to use a select widget of some kind.
         if db_field.choices is not None:
             return self.formfield_for_choice_field(db_field, request, **kwargs)
-        
+
         if isinstance(db_field, ListField) and isinstance(db_field.field, ReferenceField):
             return self.formfield_for_reference_listfield(db_field, request, **kwargs)
 
@@ -101,17 +101,17 @@ class MongoFormFieldMixin(object):
             elif db_field.name in self.raw_id_fields:
                 kwargs['widget'] = ReferenceRawIdWidget(db_field.rel, self.admin_site)
                 return self._get_formfield(db_field, **kwargs)
-                
+
         if isinstance(db_field, StringField):
             if db_field.max_length is None:
                 kwargs = dict({'widget': widgets.AdminTextareaWidget}, **kwargs)
             else:
                 kwargs = dict({'widget': widgets.AdminTextInputWidget}, **kwargs)
             return self._get_formfield(db_field, **kwargs)
-        
+
         # For any other type of field, just call its formfield() method.
         return self._get_formfield(db_field, **kwargs)
-        
+
     def _get_formfield(self, db_field, **kwargs):
         """Return overridden formfield if exists, otherwise default formfield"""
         # If we've got overrides for the formfield defined, use 'em. **kwargs
@@ -120,7 +120,7 @@ class MongoFormFieldMixin(object):
             if klass in self.formfield_overrides:
                 kwargs.update(self.formfield_overrides[klass])
                 break
-        return formfield(db_field, **kwargs) 
+        return formfield(db_field, **kwargs)
 
     def formfield_for_choice_field(self, db_field, request=None, **kwargs):
         """
@@ -152,19 +152,19 @@ class MongoFormFieldMixin(object):
             kwargs['widget'] = widgets.FilteredSelectMultiple(forms.forms.pretty_name(db_field.name), (db_field.name in self.filter_vertical))
 
         return formfield(db_field, **kwargs)
-        
+
 
 class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
     change_list_template = "admin/change_document_list.html"
     form = DocumentForm
-    
+
     _embedded_inlines = None
-    
+
     def __init__(self, model, admin_site):
         super(DocumentAdmin, self).__init__(model, admin_site)
-        
+
         self.inlines = self._find_embedded_inlines()
-    
+
     def _find_embedded_inlines(self):
         emb_inlines = []
         exclude = self.exclude or []
@@ -186,9 +186,9 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
                 # https://github.com/jschrewe/django-mongoadmin/issues/4
                 # The solution for now is to ignore that field entirely.
                 continue
-            
+
             init_document_options(embedded_document)
-            
+
             embedded_admin_base = EmbeddedStackedDocumentInline
             embedded_admin_name = "%sAdmin" % embedded_document.__class__.__name__
             inline_attrs = {
@@ -205,19 +205,19 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
                 if inline_class.document == embedded_document:
                     embedded_admin = inline_class
             emb_inlines.append(embedded_admin)
-            
+
             if f.name not in exclude:
                 exclude.append(f.name)
-        
+
         # sort out the declared inlines. Embedded admins take a different
         # set of arguments for init and are stored seperately. So the
         # embedded stuff has to be removed from self.inlines here
         inlines = [i for i in self.inlines if i not in emb_inlines]
-        
+
         self.exclude = exclude
-        
+
         return inlines + emb_inlines
-    
+
     def get_queryset(self, request):
         """
         Returns a QuerySet of all model instances that can be edited by the
@@ -229,14 +229,14 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         if ordering:
             qs = qs.order_by(*ordering)
         return qs
-        
+
     def get_changelist(self, request, **kwargs):
         """
         Returns the ChangeList class for use on the changelist page.
         """
         from mongoadmin.views import DocumentChangeList
         return DocumentChangeList
-        
+
     def get_object(self, request, object_id):
         """
         Returns an instance matching the primary key provided. ``None``  is
@@ -250,7 +250,7 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
             return queryset.get(pk=object_id)
         except (model.DoesNotExist, ValidationError, ValueError):
             return None
-            
+
     def get_form(self, request, obj=None, **kwargs):
         """
         Returns a Form class for use in the admin add view. This is used by
@@ -283,14 +283,14 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         if defaults['fields'] is None and not modelform_defines_fields(defaults['form']):
             defaults['fields'] = None
 
-        print defaults
+        print(defaults)
         try:
             return documentform_factory(self.model, **defaults)
         except FieldError as e:
-            print e.message
+            print(e.message)
             raise FieldError('%s. Check fields/fieldsets/exclude attributes of class %s.'
                              % (e, self.__class__.__name__))
-                             
+
     def save_related(self, request, form, formsets, change):
         """
         Given the ``HttpRequest``, the parent ``ModelForm`` instance, the
@@ -301,7 +301,7 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         """
         for formset in formsets:
             self.save_formset(request, form, formset, change=change)
-            
+
     def log_addition(self, request, object):
         """
         Log that an object has been successfully added.
@@ -310,10 +310,10 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         """
         if not is_django_user_model(request.user):
             return
-            
+
         super(DocumentAdmin, self).log_addition(request=request, object=object)
-            
-            
+
+
     def log_change(self, request, object, message):
         """
         Log that an object has been successfully changed.
@@ -322,9 +322,9 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         """
         if not is_django_user_model(request.user):
             return
-            
+
         super(DocumentAdmin, self).log_change(request=request, object=object, message=message)
-        
+
     def log_deletion(self, request, object, object_repr):
         """
         Log that an object has been successfully changed.
@@ -333,21 +333,21 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         """
         if not is_django_user_model(request.user):
             return
-            
+
         super(DocumentAdmin, self).log_deletion(request=request, object=object, object_repr=object_repr)
-        
+
 class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
     parent_field_name = None
     formset = EmbeddedDocumentFormSet
     form = EmbeddedDocumentForm
-    
+
     def get_queryset(self, request):
         """
         Returns a QuerySet of all model instances that can be edited by the
         admin site. This is used by changelist_view.
         """
         return getattr(self.parent_model, self.parent_field_name, [])
-    
+
     def get_formset(self, request, obj=None, **kwargs):
         """Returns a BaseInlineFormSet class for use in admin add/change views."""
         if 'fields' in kwargs:
@@ -420,12 +420,12 @@ class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
             defaults['fields'] = None
 
         return embeddedformset_factory(self.model, self.parent_model, **defaults)
-        
-    
+
+
 class EmbeddedStackedDocumentInline(EmbeddedInlineAdmin):
     template = 'admin/edit_inline/stacked.html'
 
 
 class EmbeddedTabularDocumentInline(EmbeddedInlineAdmin):
-    template = 'admin/edit_inline/tabular.html'        
-        
+    template = 'admin/edit_inline/tabular.html'
+
