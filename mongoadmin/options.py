@@ -283,11 +283,9 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         if defaults['fields'] is None and not modelform_defines_fields(defaults['form']):
             defaults['fields'] = None
 
-        print(defaults)
         try:
             return documentform_factory(self.model, **defaults)
         except FieldError as e:
-            print(e.message)
             raise FieldError('%s. Check fields/fieldsets/exclude attributes of class %s.'
                              % (e, self.__class__.__name__))
 
