@@ -40,7 +40,7 @@ def formfield(field, form_class=None, **kwargs):
     """
     Returns a django.forms.Field instance for this database Field.
     """
-    defaults = {'required': field.required, 'label': forms.forms.pretty_name(field.name)}
+    defaults = {'required': field.required}
     if field.default is not None:
         if isinstance(field.default, collections.Callable):
             defaults['initial'] = field.default()
