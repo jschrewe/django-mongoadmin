@@ -248,7 +248,7 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         from mongoadmin.views import DocumentChangeList
         return DocumentChangeList
 
-    def get_object(self, request, object_id):
+    def get_object(self, request, object_id, from_field=None):
         """
         Returns an instance matching the primary key provided. ``None``  is
         returned if no match is found (or the object_id failed validation
@@ -256,9 +256,10 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         """
         queryset = self.get_queryset(request)
         model = queryset._document
+        field = model._meta.pk if from_field is None else model._meta.get_field(from_field)
         try:
-            object_id = model._meta.pk.to_python(object_id)
-            return queryset.get(pk=object_id)
+            object_id = field.to_python(object_id)
+            return queryset.get(**{field.name: object_id})
         except (model.DoesNotExist, ValidationError, ValueError):
             return None
 
