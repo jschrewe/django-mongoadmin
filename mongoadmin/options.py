@@ -36,6 +36,7 @@ FORMFIELD_FOR_DBFIELD_DEFAULTS = {
 
 _fieldgenerator = load_field_generator()()
 
+
 def formfield(field, form_class=None, **kwargs):
     """
     Returns a django.forms.Field instance for this database Field.
@@ -66,6 +67,7 @@ def formfield(field, form_class=None, **kwargs):
 
 
 class MongoFormFieldMixin(object):
+
     def formfield_for_dbfield(self, db_field, **kwargs):
         """
         Hook for specifying the form Field instance for a given database Field
@@ -91,22 +93,27 @@ class MongoFormFieldMixin(object):
             # OneToOneField with parent_link=True or a M2M intermediary.
             form_field = self._get_formfield(db_field, **kwargs)
             if db_field.name not in self.raw_id_fields:
-                related_modeladmin = self.admin_site._registry.get(db_field.document_type)
+                related_modeladmin = self.admin_site._registry.get(
+                    db_field.document_type)
                 can_add_related = bool(related_modeladmin and
-                            related_modeladmin.has_add_permission(request))
+                                       related_modeladmin.has_add_permission(request))
                 form_field.widget = widgets.RelatedFieldWidgetWrapper(
-                            form_field.widget, RelationWrapper(db_field.document_type), self.admin_site,
-                            can_add_related=can_add_related)
+                    form_field.widget, RelationWrapper(
+                        db_field.document_type), self.admin_site,
+                    can_add_related=can_add_related)
                 return form_field
             elif db_field.name in self.raw_id_fields:
-                kwargs['widget'] = ReferenceRawIdWidget(db_field.rel, self.admin_site)
+                kwargs['widget'] = ReferenceRawIdWidget(
+                    db_field.rel, self.admin_site)
                 return self._get_formfield(db_field, **kwargs)
 
         if isinstance(db_field, StringField):
             if db_field.max_length is None:
-                kwargs = dict({'widget': widgets.AdminTextareaWidget}, **kwargs)
+                kwargs = dict(
+                    {'widget': widgets.AdminTextareaWidget}, **kwargs)
             else:
-                kwargs = dict({'widget': widgets.AdminTextInputWidget}, **kwargs)
+                kwargs = dict(
+                    {'widget': widgets.AdminTextInputWidget}, **kwargs)
             return self._get_formfield(db_field, **kwargs)
 
         # For any other type of field, just call its formfield() method.
@@ -135,21 +142,22 @@ class MongoFormFieldMixin(object):
                 })
             if 'choices' not in kwargs:
                 kwargs['choices'] = db_field.get_choices(
-                    include_blank = db_field.blank,
+                    include_blank=db_field.blank,
                     blank_choice=[('', _('None'))]
                 )
         return formfield(db_field, **kwargs)
-
 
     def formfield_for_reference_listfield(self, db_field, request=None, **kwargs):
         """
         Get a form Field for a ManyToManyField.
         """
         if db_field.name in self.raw_id_fields:
-            kwargs['widget'] = MultiReferenceRawIdWidget(db_field.field.rel, self.admin_site)
+            kwargs['widget'] = MultiReferenceRawIdWidget(
+                db_field.field.rel, self.admin_site)
             kwargs['help_text'] = ''
         elif db_field.name in (list(self.filter_vertical) + list(self.filter_horizontal)):
-            kwargs['widget'] = widgets.FilteredSelectMultiple(forms.forms.pretty_name(db_field.name), (db_field.name in self.filter_vertical))
+            kwargs['widget'] = widgets.FilteredSelectMultiple(
+                forms.forms.pretty_name(db_field.name), (db_field.name in self.filter_vertical))
 
         return formfield(db_field, **kwargs)
 
@@ -190,15 +198,18 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
             init_document_options(embedded_document)
 
             embedded_admin_base = EmbeddedStackedDocumentInline
-            embedded_admin_name = "%sAdmin" % embedded_document.__class__.__name__
+            embedded_admin_name = "%sAdmin" % embedded_document.__name__
             inline_attrs = {
                 'model': embedded_document,
                 'parent_field_name': f.name,
             }
-            # if f is an EmbeddedDocumentField set the maximum allowed form instances to one
+            # if f is an EmbeddedDocumentField set the maximum allowed form
+            # instances to one
             if isinstance(f, EmbeddedDocumentField):
                 inline_attrs['max_num'] = 1
-            embedded_admin = type(embedded_admin_name, (embedded_admin_base,), inline_attrs)
+            embedded_admin = type(
+                embedded_admin_name, (embedded_admin_base,), inline_attrs
+            )
             # check if there is an admin for the embedded document in
             # self.inlines. If there is, use this, else use default.
             for inline_class in self.inlines:
@@ -311,7 +322,6 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
 
         super(DocumentAdmin, self).log_addition(request=request, object=object)
 
-
     def log_change(self, request, object, message):
         """
         Log that an object has been successfully changed.
@@ -321,7 +331,8 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         if not is_django_user_model(request.user):
             return
 
-        super(DocumentAdmin, self).log_change(request=request, object=object, message=message)
+        super(DocumentAdmin, self).log_change(
+            request=request, object=object, message=message)
 
     def log_deletion(self, request, object, object_repr):
         """
@@ -332,7 +343,9 @@ class DocumentAdmin(MongoFormFieldMixin, ModelAdmin):
         if not is_django_user_model(request.user):
             return
 
-        super(DocumentAdmin, self).log_deletion(request=request, object=object, object_repr=object_repr)
+        super(DocumentAdmin, self).log_deletion(
+            request=request, object=object, object_repr=object_repr)
+
 
 class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
     parent_field_name = None
@@ -348,6 +361,7 @@ class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
 
     def get_formset(self, request, obj=None, **kwargs):
         """Returns a BaseInlineFormSet class for use in admin add/change views."""
+
         if 'fields' in kwargs:
             fields = kwargs.pop('fields')
         else:
@@ -381,6 +395,7 @@ class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
         base_model_form = defaults['form']
 
         class DeleteProtectedModelForm(base_model_form):
+
             def hand_clean_DELETE(self):
                 """
                 We don't validate the 'DELETE' field itself because on
@@ -394,7 +409,9 @@ class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
                         objs = []
                         for p in collector.protected:
                             objs.append(
-                                # Translators: Model verbose name and instance representation, suitable to be an item in a list
+                                # Translators: Model verbose name and instance
+                                # representation, suitable to be an item in a
+                                # list
                                 _('%(class_name)s %(instance)s') % {
                                     'class_name': p._meta.verbose_name,
                                     'instance': p}
@@ -405,7 +422,8 @@ class EmbeddedInlineAdmin(MongoFormFieldMixin, InlineModelAdmin):
                         msg = _("Deleting %(class_name)s %(instance)s would require "
                                 "deleting the following protected related objects: "
                                 "%(related_objects)s")
-                        raise ValidationError(msg, code='deleting_protected', params=params)
+                        raise ValidationError(
+                            msg, code='deleting_protected', params=params)
 
             def is_valid(self):
                 result = super(DeleteProtectedModelForm, self).is_valid()
@@ -426,4 +444,3 @@ class EmbeddedStackedDocumentInline(EmbeddedInlineAdmin):
 
 class EmbeddedTabularDocumentInline(EmbeddedInlineAdmin):
     template = 'admin/edit_inline/tabular.html'
-

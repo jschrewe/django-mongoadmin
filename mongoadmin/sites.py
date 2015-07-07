@@ -1,8 +1,8 @@
 from django.contrib.admin import ModelAdmin
 from django.db.models.base import ModelBase
 from django.core.exceptions import ImproperlyConfigured
-from django.conf import settings
-from django.contrib.admin.sites import AdminSite, NotRegistered, AlreadyRegistered
+from django.contrib.admin.sites import (AdminSite, NotRegistered,
+                                        AlreadyRegistered)
 
 from mongoengine.base import TopLevelDocumentMetaclass
 
@@ -12,14 +12,17 @@ from mongoadmin import DocumentAdmin
 
 LOGIN_FORM_KEY = 'this_is_the_login_form'
 
+
 class MongoAdminSite(AdminSite):
+
     """
-    An AdminSite object encapsulates an instance of the Django admin application, ready
-    to be hooked in to your URLconf. Models are registered with the AdminSite using the
-    register() method, and the get_urls() method can then be used to access Django view
-    functions that present a full admin interface for the collection of registered
-    models.
+    An AdminSite object encapsulates an instance of the Django admin
+    application, ready to be hooked in to your URLconf. Models are registered
+    with the AdminSite using the register() method, and the get_urls() method
+    can then be used to access Django view functions that present a full admin
+    interface for the collection of registered models.
     """
+
     def register(self, model_or_iterable, admin_class=None, **options):
         """
         Registers the given model(s) with the given admin class.
@@ -36,14 +39,14 @@ class MongoAdminSite(AdminSite):
         """
         if isinstance(model_or_iterable, ModelBase) and not admin_class:
             admin_class = ModelAdmin
-            
+
         if isinstance(model_or_iterable, TopLevelDocumentMetaclass) and not admin_class:
             admin_class = DocumentAdmin
 
         # Don't import the humongous validation code unless required
-        #if admin_class and settings.DEBUG:
+        # if admin_class and settings.DEBUG:
         #    from mongoadmin.validation import validate
-        #else:
+        # else:
         validate = lambda model, adminclass: None
 
         if isinstance(model_or_iterable, ModelBase) or \
@@ -53,13 +56,14 @@ class MongoAdminSite(AdminSite):
         for model in model_or_iterable:
             if isinstance(model, TopLevelDocumentMetaclass):
                 init_document_options(model)
-            
+
             if hasattr(model._meta, 'abstract') and model._meta.abstract:
                 raise ImproperlyConfigured('The model %s is abstract, so it '
-                      'cannot be registered with admin.' % model.__name__)
+                                           'cannot be registered with admin.' % model.__name__)
 
             if model in self._registry:
-                raise AlreadyRegistered('The model %s is already registered' % model.__name__)
+                raise AlreadyRegistered(
+                    'The model %s is already registered' % model.__name__)
 
             # Ignore the registration if the model has been
             # swapped out.
@@ -73,7 +77,8 @@ class MongoAdminSite(AdminSite):
                 # the created class appears to "live" in the wrong place,
                 # which causes issues later on.
                 options['__module__'] = __name__
-                admin_class = type("%sAdmin" % model.__name__, (admin_class,), options)
+                admin_class = type(
+                    "%sAdmin" % model.__name__, (admin_class,), options)
 
             # Validate (which might be a no-op)
             validate(admin_class, model)
@@ -92,7 +97,8 @@ class MongoAdminSite(AdminSite):
             model_or_iterable = [model_or_iterable]
         for model in model_or_iterable:
             if model not in self._registry:
-                raise NotRegistered('The model %s is not registered' % model.__name__)
+                raise NotRegistered(
+                    'The model %s is not registered' % model.__name__)
             del self._registry[model]
 
 

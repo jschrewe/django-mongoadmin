@@ -3,6 +3,7 @@ from django.contrib.admin.views.main import ChangeList, ORDER_VAR
 from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.paginator import InvalidPage
 
+
 class DocumentChangeList(ChangeList):
     def get_queryset(self, request):
         # First, we collect all the declared list filters.
@@ -48,8 +49,7 @@ class DocumentChangeList(ChangeList):
             return qs.distinct()
         else:
             return qs
-            
-            
+
     def get_ordering(self, request, queryset):
         """
         Returns the list of ordering fields for the change list.
@@ -72,13 +72,16 @@ class DocumentChangeList(ChangeList):
                     field_name = self.list_display[int(idx)]
                     order_field = self.get_ordering_field(field_name)
                     if not order_field:
-                        continue # No 'admin_order_field', skip it
+                        continue  # No 'admin_order_field', skip it
                     ordering.append(pfx + order_field)
                 except (IndexError, ValueError):
-                    continue # Invalid ordering specified, skip it.
+                    continue  # Invalid ordering specified, skip it.
 
         # Add the given query's ordering fields, if any.
-        ordering.extend(queryset._ordering)
+        try:
+            ordering.extend(queryset._ordering)
+        except TypeError:
+            pass
 
         # Ensure that the primary key is systematically present in the list of
         # ordering fields so we can guarantee a deterministic order across all
@@ -90,9 +93,10 @@ class DocumentChangeList(ChangeList):
             ordering.append('-pk')
 
         return ordering
-        
+
     def get_results(self, request):
-        paginator = self.model_admin.get_paginator(request, self.queryset, self.list_per_page)
+        paginator = self.model_admin.get_paginator(
+            request, self.queryset, self.list_per_page)
         # Get the number of objects, with admin filters applied.
         result_count = paginator.count
 
@@ -112,7 +116,7 @@ class DocumentChangeList(ChangeList):
             result_list = self.queryset.clone()
         else:
             try:
-                result_list = paginator.page(self.page_num+1).object_list
+                result_list = paginator.page(self.page_num + 1).object_list
             except InvalidPage:
                 raise IncorrectLookupParameters
 
